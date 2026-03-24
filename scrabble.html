@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔤 Scrabble — Marcador</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0c02;
+    --surface: #1a1505;
+    --surface2: #221c07;
+    --accent: #f0c040;
+    --accent2: #e87a20;
+    --accent-dim: rgba(240,192,64,0.15);
+    --text: #fff;
+    --muted: rgba(255,255,255,0.45);
+    --border: rgba(240,192,64,0.15);
+    --green: #4ade80;
+    --red: #f87171;
+  }
+  html,body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; color:var(--text); overflow-x:hidden; }
+  body::before {
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(240,192,64,0.1) 0%, transparent 65%);
+  }
+
+  .app { position:relative; z-index:1; max-width:860px; margin:0 auto; padding:2rem 1.25rem 4rem; }
+
+  /* Header */
+  .header { text-align:center; margin-bottom:2.5rem; }
+  .header-back { display:inline-flex; align-items:center; gap:0.4rem; color:var(--muted); font-size:0.85rem; text-decoration:none; margin-bottom:1rem; transition:color 0.2s; }
+  .header-back:hover { color:var(--accent); }
+  .header h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(2.5rem,9vw,5rem); letter-spacing:0.06em; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header p { color:var(--muted); font-size:0.95rem; margin-top:0.25rem; }
+
+  /* Phase containers */
+  .phase { display:none; }
+  .phase.active { display:block; animation:fadeIn 0.4s ease both; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Section boxes */
+  .card {
+    background:var(--surface); border:1px solid var(--border); border-radius:20px;
+    padding:1.75rem; margin-bottom:1.5rem;
+  }
+  .card-title { font-size:0.75rem; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--accent); margin-bottom:1.25rem; }
+
+  /* Player list */
+  .player-list { display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.25rem; }
+  .player-chip {
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--accent-dim); border:1px solid var(--border); border-radius:12px;
+    padding:0.65rem 1rem; font-weight:700;
+  }
+  .player-chip .remove-btn { background:none; border:none; color:var(--red); cursor:pointer; font-size:1.1rem; line-height:1; padding:0.2rem; border-radius:6px; transition:background 0.2s; }
+  .player-chip .remove-btn:hover { background:rgba(248,113,113,0.15); }
+  .empty-hint { color:var(--muted); font-size:0.9rem; text-align:center; padding:1rem; }
+
+  /* Add player form */
+  .input-row { display:flex; gap:0.75rem; }
+  .input-row input {
+    flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:12px;
+    padding:0.75rem 1rem; color:var(--text); font-family:'Nunito',sans-serif; font-size:1rem;
+    outline:none; transition:border-color 0.2s;
+  }
+  .input-row input:focus { border-color:var(--accent); }
+  .input-row input::placeholder { color:var(--muted); }
+
+  /* Buttons */
+  .btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.75rem 1.4rem; border-radius:12px; border:none; font-family:'Nunito',sans-serif; font-size:0.95rem; font-weight:900; cursor:pointer; transition:opacity 0.2s,transform 0.15s; }
+  .btn:hover { opacity:0.85; transform:scale(0.98); }
+  .btn:active { transform:scale(0.95); }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#1a1000; }
+  .btn-ghost { background:var(--accent-dim); color:var(--accent); border:1px solid var(--border); }
+  .btn-success { background:linear-gradient(135deg,#4ade80,#22c55e); color:#001a06; }
+  .btn-danger { background:linear-gradient(135deg,#f87171,#ef4444); color:#1a0000; }
+  .btn-full { width:100%; justify-content:center; margin-top:0.5rem; padding:1rem; font-size:1.05rem; }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .session-card { padding:1rem 1.25rem; }
+  .session-actions { display:flex; gap:0.75rem; flex-wrap:wrap; }
+  .session-actions .btn { flex:1; justify-content:center; min-width:220px; }
+  .session-note { color:var(--muted); font-size:0.82rem; margin-top:0.75rem; line-height:1.4; }
+
+  /* Round score input */
+  .round-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem; }
+  .round-badge { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:0.08em; color:var(--accent); }
+  .score-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:0.75rem; }
+  .score-field label { display:block; font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.08em; }
+  .score-field input {
+    width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+    padding:0.7rem 0.9rem; color:var(--text); font-family:'Nunito',sans-serif; font-size:1.1rem; font-weight:700;
+    outline:none; transition:border-color 0.2s; text-align:center;
+  }
+  .score-field input:focus { border-color:var(--accent); }
+
+  /* Scoreboard table */
+  .score-table { width:100%; border-collapse:collapse; font-size:0.95rem; }
+  .score-table th { padding:0.6rem 0.8rem; text-align:left; font-size:0.75rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); border-bottom:1px solid var(--border); }
+  .score-table td { padding:0.6rem 0.8rem; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .score-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+  .total-cell { font-weight:900; color:var(--accent); font-size:1.05rem; }
+  .leader-row td { background:rgba(240,192,64,0.06); }
+
+  /* Results */
+  .podium { display:flex; flex-direction:column; gap:0.75rem; }
+  .podium-item {
+    display:flex; align-items:center; gap:1rem;
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1rem 1.25rem;
+    transition:box-shadow 0.3s;
+  }
+  .podium-item.place-1 { border-color:rgba(240,192,64,0.5); box-shadow:0 0 30px rgba(240,192,64,0.12); }
+  .podium-item.place-2 { border-color:rgba(180,180,200,0.4); }
+  .podium-item.place-3 { border-color:rgba(205,127,50,0.4); }
+  .place-num { font-family:'Bebas Neue',sans-serif; font-size:2rem; min-width:2.5rem; text-align:center; }
+  .place-1 .place-num { color:#f0c040; }
+  .place-2 .place-num { color:#b4b4c8; }
+  .place-3 .place-num { color:#cd7f32; }
+  .place-name { flex:1; font-weight:900; font-size:1.1rem; }
+  .place-score { font-size:1.4rem; font-weight:900; color:var(--accent); font-family:'Bebas Neue',sans-serif; }
+  .place-medal { font-size:1.8rem; }
+
+  .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:0.75rem; margin-top:1.5rem; }
+  .stat-box { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:1rem; text-align:center; }
+  .stat-val { font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--accent); }
+  .stat-label { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-top:0.2rem; }
+
+  /* Toast */
+  .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(100px); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0.75rem 1.5rem; font-weight:700; color:var(--text); z-index:999; transition:transform 0.3s; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  @media(max-width:480px) {
+    .input-row { flex-direction:column; }
+    .btn-primary { width:100%; justify-content:center; }
+    .session-actions .btn { width:100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <a class="header-back" href="index.html">← Volver al Inicio</a>
+    <h1>🔤 Scrabble</h1>
+    <p>El jugador con más puntos al final, ¡gana!</p>
+  </div>
+
+  <div class="card session-card">
+    <div class="card-title">💾 Sesión</div>
+    <div class="session-actions">
+      <button class="btn btn-ghost" onclick="saveForLater()">💾 Continuar Después</button>
+      <button class="btn btn-danger" onclick="restartGame()">🗑 Reiniciar Juego</button>
+    </div>
+    <p class="session-note">La partida se guarda en este dispositivo para retomarla más tarde, incluso si cierras la página.</p>
+  </div>
+
+  <!-- PHASE 1: Setup -->
+  <div class="phase active" id="phaseSetup">
+    <div class="card">
+      <div class="card-title">👥 Jugadores</div>
+      <div class="player-list" id="playerList">
+        <p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>
+      </div>
+      <div class="input-row">
+        <input type="text" id="playerNameInput" placeholder="Nombre del jugador..." maxlength="20" autocomplete="off">
+        <button class="btn btn-primary" onclick="addPlayer()">+ Agregar</button>
+      </div>
+    </div>
+    <button class="btn btn-success btn-full" id="startBtn" onclick="startGame()" disabled>▶ Comenzar Juego</button>
+  </div>
+
+  <!-- PHASE 2: Game -->
+  <div class="phase" id="phaseGame">
+    <div class="card" id="roundCard">
+      <div class="round-header">
+        <div>
+          <div class="card-title">Ingresa los Puntajes</div>
+          <div class="round-badge" id="roundLabel">Ronda 1</div>
+        </div>
+      </div>
+      <div class="score-grid" id="scoreGrid"></div>
+      <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitRound()">✓ Confirmar Ronda</button>
+      </div>
+    </div>
+
+    <!-- Live scoreboard -->
+    <div class="card">
+      <div class="card-title">📊 Marcador Acumulado</div>
+      <div style="overflow-x:auto;">
+        <table class="score-table" id="scoreTable">
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="btn btn-danger btn-full" onclick="confirmEndGame()">🏁 Finalizar Juego</button>
+  </div>
+
+  <!-- PHASE 3: Results -->
+  <div class="phase" id="phaseResults">
+    <div class="card">
+      <div class="card-title">🏆 Resultados Finales</div>
+      <div class="podium" id="podium"></div>
+      <div class="stats-row" id="statsRow"></div>
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">📋 Ver Historial</button>
+    </div>
+
+    <!-- History card (hidden initially) -->
+    <div class="card" id="historyCard" style="display:none;margin-top:1.5rem;">
+      <div class="card-title">📋 Historial de Rondas</div>
+      <div style="overflow-x:auto;"><table class="score-table" id="historyTable"></table></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let players = [];
+let roundHistory = [];
+let currentRound = 1;
+let gameStarted = false;
+const STORAGE_KEY = 'game_points_scrabble_v1';
+
+const playerNameInput = document.getElementById('playerNameInput');
+playerNameInput.addEventListener('keydown', e => { if(e.key==='Enter') addPlayer(); });
+
+function addPlayer() {
+  const name = playerNameInput.value.trim();
+  if (!name) return showToast('Ingresa un nombre');
+  if (players.includes(name)) return showToast('Ese nombre ya existe');
+  if (players.length >= 8) return showToast('Máximo 8 jugadores');
+  players.push(name);
+  playerNameInput.value = '';
+  renderPlayerList();
+  syncStartButton();
+  persistGameState();
+}
+
+function removePlayer(i) {
+  players.splice(i,1);
+  renderPlayerList();
+  syncStartButton();
+  persistGameState();
+}
+
+function renderPlayerList() {
+  const list = document.getElementById('playerList');
+  if (!players.length) { list.innerHTML = '<p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>'; return; }
+  list.innerHTML = players.map((p,i) => `
+    <div class="player-chip">
+      <span>🎮 ${p}</span>
+      <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
+    </div>`).join('');
+}
+
+function startGame() {
+  if (players.length < 2) return;
+  roundHistory = [];
+  currentRound = 1;
+  gameStarted = true;
+  showPhase('phaseGame');
+  buildTableHead();
+  renderScoreInputs();
+  renderScoreTable();
+  persistGameState();
+}
+
+function buildTableHead() {
+  const head = document.getElementById('tableHead');
+  head.innerHTML = '<th>Jugador</th>' + players.map((_,i)=>`<th>R${i+1}...</th>`).join('') + '<th>Total</th>';
+}
+
+function renderScoreInputs() {
+  document.getElementById('roundLabel').textContent = `Ronda ${currentRound}`;
+  const grid = document.getElementById('scoreGrid');
+  grid.innerHTML = players.map(p => `
+    <div class="score-field">
+      <label>${p}</label>
+      <input type="number" id="score_${p.replace(/\s/g,'_')}" placeholder="0" min="0">
+    </div>`).join('');
+  // Focus first
+  const first = grid.querySelector('input');
+  if (first) first.focus();
+}
+
+function submitRound() {
+  const scores = {};
+  let valid = true;
+  for (const p of players) {
+    const el = document.getElementById(`score_${p.replace(/\s/g,'_')}`);
+    const v = el.value.trim();
+    if (v === '') { el.style.borderColor = 'var(--red)'; valid = false; continue; }
+    el.style.borderColor = '';
+    scores[p] = parseInt(v) || 0;
+  }
+  if (!valid) return showToast('Completa todos los puntajes');
+  roundHistory.push({ round: currentRound, scores });
+  currentRound++;
+  renderScoreTable();
+  renderScoreInputs();
+  persistGameState();
+  showToast(`✓ Ronda ${currentRound-1} registrada`);
+}
+
+function getTotals() {
+  const totals = {};
+  players.forEach(p => totals[p] = 0);
+  roundHistory.forEach(r => players.forEach(p => totals[p] += (r.scores[p]||0)));
+  return totals;
+}
+
+function renderScoreTable() {
+  const head = document.getElementById('tableHead');
+  const cols = roundHistory.length;
+  head.innerHTML = '<th>Jugador</th>' + Array.from({length:cols},(_,i)=>`<th>R${i+1}</th>`).join('') + '<th>Total</th>';
+
+  const totals = getTotals();
+  const maxTotal = Math.max(...Object.values(totals));
+  const body = document.getElementById('tableBody');
+  body.innerHTML = players.map(p => {
+    const isLeader = totals[p] === maxTotal;
+    const cells = roundHistory.map(r => `<td>${r.scores[p]??'-'}</td>`).join('');
+    return `<tr class="${isLeader?'leader-row':''}">
+      <td style="font-weight:700">${isLeader?'👑 ':''}${p}</td>
+      ${cells}
+      <td class="total-cell">${totals[p]}</td>
+    </tr>`;
+  }).join('');
+}
+
+function confirmEndGame() {
+  if (roundHistory.length === 0) return showToast('Juega al menos una ronda antes de finalizar');
+  if (!confirm('¿Finalizar el juego y ver los resultados?')) return;
+  endGame();
+}
+
+function endGame(shouldScroll = true) {
+  const totals = getTotals();
+  // Sort: higher is better
+  const sorted = [...players].sort((a,b) => totals[b] - totals[a]);
+  const medals = ['🥇','🥈','🥉'];
+  const podium = document.getElementById('podium');
+  podium.innerHTML = sorted.map((p,i) => `
+    <div class="podium-item place-${Math.min(i+1,4)}" style="animation:fadeIn ${0.1+i*0.15}s ease both">
+      <div class="place-num">${i+1}°</div>
+      <div class="place-name">${p}</div>
+      <div class="place-score">${totals[p]} pts</div>
+      <div class="place-medal">${medals[i]||''}</div>
+    </div>`).join('');
+
+  const stats = document.getElementById('statsRow');
+  stats.innerHTML = `
+    <div class="stat-box"><div class="stat-val">${roundHistory.length}</div><div class="stat-label">Rondas</div></div>
+    <div class="stat-box"><div class="stat-val">${players.length}</div><div class="stat-label">Jugadores</div></div>
+    <div class="stat-box"><div class="stat-val">${totals[sorted[0]]}</div><div class="stat-label">Mejor Puntaje</div></div>`;
+
+  showPhase('phaseResults', shouldScroll);
+  document.getElementById('historyCard').style.display = 'none';
+  persistGameState();
+}
+
+function viewHistory() {
+  const card = document.getElementById('historyCard');
+  if (card.style.display === 'none') {
+    buildHistoryTable();
+    card.style.display = 'block';
+    card.scrollIntoView({behavior:'smooth'});
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+function buildHistoryTable() {
+  const table = document.getElementById('historyTable');
+  const totals = getTotals();
+  table.innerHTML = `<thead><tr><th>Ronda</th>${players.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
+    <tbody>${roundHistory.map(r=>`<tr><td style="font-weight:700">Ronda ${r.round}</td>${players.map(p=>`<td>${r.scores[p]??'-'}</td>`).join('')}</tr>`).join('')}
+    <tr style="background:rgba(240,192,64,0.06)"><td style="font-weight:900;color:var(--accent)">TOTAL</td>${players.map(p=>`<td class="total-cell">${totals[p]}</td>`).join('')}</tr>
+    </tbody>`;
+}
+
+function restartGame() {
+  if (!confirm('¿Comenzar una nueva partida? Se perderán los datos actuales.')) return;
+  players = []; roundHistory = []; currentRound = 1; gameStarted = false;
+  renderPlayerList();
+  syncStartButton();
+  clearSavedGame();
+  showPhase('phaseSetup');
+}
+
+function showPhase(id, shouldScroll = true) {
+  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (shouldScroll) window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function syncStartButton() {
+  document.getElementById('startBtn').disabled = players.length < 2;
+}
+
+function getActivePhaseId() {
+  return document.querySelector('.phase.active')?.id || 'phaseSetup';
+}
+
+function captureDraftScores() {
+  if (getActivePhaseId() !== 'phaseGame') return null;
+  const draftScores = {};
+  for (const p of players) {
+    const input = document.getElementById(`score_${p.replace(/\s/g,'_')}`);
+    if (input) draftScores[p] = input.value;
+  }
+  return draftScores;
+}
+
+function applyDraftScores(draftScores) {
+  if (!draftScores) return;
+  for (const p of players) {
+    const input = document.getElementById(`score_${p.replace(/\s/g,'_')}`);
+    if (input && draftScores[p] !== undefined) input.value = draftScores[p];
+  }
+}
+
+function persistGameState({ includeDraft = false } = {}) {
+  if (!players.length && !roundHistory.length) {
+    clearSavedGame();
+    return true;
+  }
+
+  const state = {
+    players,
+    roundHistory,
+    currentRound,
+    gameStarted,
+    phase: getActivePhaseId(),
+    draftScores: includeDraft ? captureDraftScores() : null,
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch (error) {
+    console.error('No se pudo guardar la partida de Scrabble', error);
+    return false;
+  }
+}
+
+function clearSavedGame() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+function saveForLater() {
+  if (!players.length) return showToast('No hay partida para guardar');
+  if (persistGameState({ includeDraft: true })) showToast('Partida guardada en este dispositivo');
+  else showToast('No se pudo guardar la partida');
+}
+
+function restoreSavedGame() {
+  renderPlayerList();
+  syncStartButton();
+
+  let savedState;
+  try {
+    savedState = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  } catch (error) {
+    console.error('No se pudo leer la partida guardada de Scrabble', error);
+    clearSavedGame();
+    return;
+  }
+
+  if (!savedState || !Array.isArray(savedState.players)) return;
+
+  players = savedState.players;
+  roundHistory = Array.isArray(savedState.roundHistory) ? savedState.roundHistory : [];
+  currentRound = Number.isInteger(savedState.currentRound) && savedState.currentRound > 0 ? savedState.currentRound : 1;
+  gameStarted = Boolean(savedState.gameStarted);
+
+  renderPlayerList();
+  syncStartButton();
+
+  if (savedState.phase === 'phaseResults' && roundHistory.length) {
+    endGame(false);
+    showToast('Partida recuperada');
+    return;
+  }
+
+  if (savedState.phase === 'phaseGame' && players.length >= 2) {
+    buildTableHead();
+    renderScoreInputs();
+    renderScoreTable();
+    showPhase('phaseGame', false);
+    applyDraftScores(savedState.draftScores);
+    showToast('Partida recuperada');
+    return;
+  }
+
+  showPhase('phaseSetup', false);
+  if (players.length) showToast('Partida recuperada');
+}
+
+restoreSavedGame();
+</script>
+</body>
+</html>
