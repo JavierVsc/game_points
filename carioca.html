@@ -101,6 +101,7 @@
   .total-cell { font-weight:900; color:var(--accent); font-size:1.05rem; }
   .leader-row td { background:rgba(52,217,165,0.06); }
   .skip-cell { color:var(--yellow); font-weight:700; }
+  .inline-total { display:inline-block; font-size:0.78rem; font-weight:900; color:var(--accent); background:rgba(255,255,255,0.08); border-radius:8px; padding:0.1rem 0.4rem; margin-left:0.35rem; vertical-align:middle; }
 
   .podium { display:flex; flex-direction:column; gap:0.75rem; }
   .podium-item { display:flex; align-items:center; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1rem 1.25rem; }
@@ -122,6 +123,19 @@
 
   .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(100px); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0.75rem 1.5rem; font-weight:700; color:var(--text); z-index:999; transition:transform 0.3s; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
   .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* Modal */
+  .modal-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:2rem; max-width:440px; width:100%; max-height:85vh; overflow-y:auto; transform:translateY(20px) scale(0.97); transition:transform 0.25s; }
+  .modal-overlay.open .modal-box { transform:translateY(0) scale(1); }
+  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.06em; color:#fff; margin-bottom:0.5rem; }
+  .modal-body { color:var(--muted); font-size:0.95rem; line-height:1.6; margin-bottom:1.5rem; }
+  .modal-actions { display:flex; gap:0.75rem; flex-wrap:wrap; }
+  .modal-actions .btn { flex:1; justify-content:center; }
+  /* Edit-round button */
+  .edit-round-btn { background:none; border:none; cursor:pointer; font-size:0.65rem; padding:0.15rem 0.3rem; border-radius:4px; opacity:0.45; transition:opacity 0.2s,background 0.2s; vertical-align:middle; margin-left:0.25rem; color:var(--accent); }
+  .edit-round-btn:hover { opacity:1; background:var(--accent-dim); }
 
   @media(max-width:480px) {
     .input-row { flex-direction:column; }
@@ -163,28 +177,7 @@
     <!-- Rounds preview -->
     <div class="card">
       <div class="card-title">📋 Rondas del Juego</div>
-      <div style="display:flex;flex-direction:column;gap:0.4rem;">
-        <script>
-          const ROUNDS = [
-            {n:'Ronda 1',  name:'2 Tríos'},
-            {n:'Ronda 2',  name:'1 Trío + 1 Escala'},
-            {n:'Ronda 3',  name:'2 Escalas'},
-            {n:'Ronda 4',  name:'3 Tríos'},
-            {n:'Ronda 5',  name:'2 Tríos + 1 Escala'},
-            {n:'Ronda 6',  name:'2 Escalas + 1 Trío'},
-            {n:'Ronda 7',  name:'4 Tríos'},
-            {n:'Ronda 8',  name:'3 Escalas'},
-            {n:'Ronda 9',  name:'Escala Sucia'},
-            {n:'Ronda 10', name:'Escala Pintada'},
-            {n:'Ronda 11', name:'Escala Real'},
-          ];
-          document.write(ROUNDS.map((r,i)=>`
-            <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.03);border-radius:10px;">
-              <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--accent);min-width:4.5rem;">${r.n}</span>
-              <span style="font-weight:700;font-size:0.95rem;">${r.name}</span>
-            </div>`).join(''));
-        </script>
-      </div>
+      <div id="roundsPreview" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
     </div>
     <button class="btn btn-success btn-full" id="startBtn" onclick="startGame()" disabled>▶ Comenzar Juego</button>
   </div>
@@ -234,6 +227,7 @@
     </div>
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
       <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">📋 Ver Historial</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">🎮 Nueva Partida</button>
     </div>
     <div class="card" id="historyCard" style="display:none;margin-top:1.5rem;">
       <div class="card-title">📋 Historial de Rondas</div>
@@ -242,9 +236,37 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirmBtn" onclick="confirmModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
+function sanitize(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const ROUNDS = [
+  {n:'Ronda 1',  name:'2 Tríos'},
+  {n:'Ronda 2',  name:'1 Trío + 1 Escala'},
+  {n:'Ronda 3',  name:'2 Escalas'},
+  {n:'Ronda 4',  name:'3 Tríos'},
+  {n:'Ronda 5',  name:'2 Tríos + 1 Escala'},
+  {n:'Ronda 6',  name:'2 Escalas + 1 Trío'},
+  {n:'Ronda 7',  name:'4 Tríos'},
+  {n:'Ronda 8',  name:'3 Escalas'},
+  {n:'Ronda 9',  name:'Escala Sucia'},
+  {n:'Ronda 10', name:'Escala Pintada'},
+  {n:'Ronda 11', name:'Escala Real'},
+];
+
 let players = [];
 let roundHistory = []; // {roundIdx, scores:{name:val}, skipped:bool}
 let currentRoundIdx = 0; // 0..10
@@ -278,7 +300,7 @@ function renderPlayerList() {
   if (!players.length) { list.innerHTML = '<p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>'; return; }
   list.innerHTML = players.map((p,i) => `
     <div class="player-chip">
-      <span>🎮 ${p}</span>
+      <span>🎮 ${sanitize(p)}</span>
       <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
     </div>`).join('');
 }
@@ -311,7 +333,7 @@ function renderProgress() {
 
 function buildTableHead() {
   const head = document.getElementById('tableHead');
-  head.innerHTML = '<th>Jugador</th>' + ROUNDS.map(r=>`<th style="font-size:0.65rem;white-space:nowrap;">${r.name}</th>`).join('') + '<th>Total</th>';
+  head.innerHTML = '<th>Jugador</th>' + ROUNDS.map(r=>`<th style="font-size:0.65rem;white-space:nowrap;">${r.name}</th>`).join('');
 }
 
 function renderScoreInputs() {
@@ -332,8 +354,8 @@ function renderScoreInputs() {
   const grid = document.getElementById('scoreGrid');
   grid.innerHTML = players.map(p => `
     <div class="score-field">
-      <label>${p}</label>
-      <input type="number" id="score_${p.replace(/\s/g,'_')}" placeholder="0" min="0">
+      <label>${sanitize(p)}</label>
+      <input type="number" id="score_${p.replace(/\s/g,'_')}" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*">
     </div>`).join('');
   const first = grid.querySelector('input');
   if (first) first.focus();
@@ -358,12 +380,20 @@ function submitRound() {
 
 function skipRound() {
   if (currentRoundIdx >= ROUNDS.length) return;
-  const scores = {};
-  players.forEach(p => scores[p] = 0);
-  roundHistory.push({ roundIdx: currentRoundIdx, scores, skipped: true });
-  currentRoundIdx++;
-  showToast(`⏭ Ronda "${ROUNDS[currentRoundIdx-1].name}" saltada`);
-  afterRound();
+  const roundName = ROUNDS[currentRoundIdx].name;
+  showModal(
+    '⏭ Saltar Ronda',
+    `¿Saltar "${roundName}"? Se registrará 0 puntos para todos los jugadores en esta ronda.`,
+    '⏭ Saltar', 'btn-skip',
+    () => {
+      const scores = {};
+      players.forEach(p => scores[p] = 0);
+      roundHistory.push({ roundIdx: currentRoundIdx, scores, skipped: true });
+      currentRoundIdx++;
+      showToast(`⏭ Ronda "${ROUNDS[currentRoundIdx-1].name}" saltada`);
+      afterRound();
+    }
+  );
 }
 
 function afterRound() {
@@ -382,10 +412,22 @@ function getTotals() {
 }
 
 function renderScoreTable() {
+  // Update headers with edit buttons
+  const head = document.getElementById('tableHead');
+  head.innerHTML = '<th>Jugador</th>' +
+    ROUNDS.map((r,i) => {
+      const done = roundHistory.find(h => h.roundIdx === i);
+      return done
+        ? `<th style="font-size:0.65rem;white-space:nowrap;">${r.name}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar ${r.n}">✏</button></th>`
+        : `<th style="font-size:0.65rem;white-space:nowrap;">${r.name}</th>`;
+    }).join('');
+
   const totals = getTotals();
   const minTotal = Math.min(...Object.values(totals));
   const body = document.getElementById('tableBody');
-  body.innerHTML = players.map(p => {
+  // Sort players by total ascending (lower is better, leader on top)
+  const sorted = [...players].sort((a,b) => totals[a] - totals[b]);
+  body.innerHTML = sorted.map(p => {
     const isLeader = totals[p] === minTotal;
     const cells = ROUNDS.map((_,i) => {
       const h = roundHistory.find(r => r.roundIdx === i);
@@ -394,17 +436,20 @@ function renderScoreTable() {
       return `<td>${h.scores[p]??0}</td>`;
     }).join('');
     return `<tr class="${isLeader?'leader-row':''}">
-      <td style="font-weight:700">${isLeader?'👑 ':''}${p}</td>
+      <td style="font-weight:700">${isLeader?'👑 ':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
       ${cells}
-      <td class="total-cell">${totals[p]}</td>
     </tr>`;
   }).join('');
 }
 
 function confirmEndGame() {
   if (roundHistory.length === 0) return showToast('Juega al menos una ronda antes de finalizar');
-  if (!confirm('¿Finalizar el juego y ver los resultados?')) return;
-  endGame();
+  showModal(
+    '🏁 Finalizar Juego',
+    '¿Estás seguro que quieres finalizar y ver los resultados finales?',
+    '🏁 Finalizar', 'btn-danger',
+    () => endGame()
+  );
 }
 
 function endGame(shouldScroll = true) {
@@ -416,7 +461,7 @@ function endGame(shouldScroll = true) {
   podium.innerHTML = sorted.map((p,i) => `
     <div class="podium-item place-${Math.min(i+1,4)}" style="animation:fadeIn ${0.1+i*0.15}s ease both">
       <div class="place-num">${i+1}°</div>
-      <div class="place-name">${p}</div>
+      <div class="place-name">${sanitize(p)}</div>
       <div class="place-score">${totals[p]} pts</div>
       <div class="place-medal">${medals[i]||''}</div>
     </div>`).join('');
@@ -452,20 +497,26 @@ function buildHistoryTable() {
     if (h.skipped) return `<tr><td style="font-weight:700">${r.n}: ${r.name}</td>${players.map(()=>'<td class="skip-cell">skip</td>').join('')}</tr>`;
     return `<tr><td style="font-weight:700">${r.n}: ${r.name}</td>${players.map(p=>`<td>${h.scores[p]??0}</td>`).join('')}</tr>`;
   }).join('');
-  table.innerHTML = `<thead><tr><th>Ronda</th>${players.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
+  table.innerHTML = `<thead><tr><th>Ronda</th>${players.map(p=>`<th>${sanitize(p)}</th>`).join('')}</tr></thead>
     <tbody>${rows}
     <tr style="background:rgba(52,217,165,0.06)"><td style="font-weight:900;color:var(--accent)">TOTAL</td>${players.map(p=>`<td class="total-cell">${totals[p]}</td>`).join('')}</tr>
     </tbody>`;
 }
 
 function restartGame() {
-  if (!confirm('¿Comenzar una nueva partida? Se perderán los datos actuales.')) return;
-  players = []; roundHistory = []; currentRoundIdx = 0;
-  resetRoundCard(true);
-  renderPlayerList();
-  syncStartButton();
-  clearSavedGame();
-  showPhase('phaseSetup');
+  showModal(
+    '🗑 Reiniciar Juego',
+    '¿Comenzar una nueva partida? Se perderán todos los datos actuales.',
+    '🗑 Reiniciar', 'btn-danger',
+    () => {
+      players = []; roundHistory = []; currentRoundIdx = 0;
+      resetRoundCard(true);
+      renderPlayerList();
+      syncStartButton();
+      clearSavedGame();
+      showPhase('phaseSetup');
+    }
+  );
 }
 
 function showPhase(id, shouldScroll = true) {
@@ -588,7 +639,83 @@ function restoreSavedGame() {
   if (players.length) showToast('Partida recuperada');
 }
 
+function renderRoundsPreview() {
+  const el = document.getElementById('roundsPreview');
+  if (!el) return;
+  el.innerHTML = ROUNDS.map(r => `
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.03);border-radius:10px;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--accent);min-width:4.5rem;">${r.n}</span>
+      <span style="font-weight:700;font-size:0.95rem;">${r.name}</span>
+    </div>`).join('');
+}
+
 restoreSavedGame();
+renderRoundsPreview();
+
+/* ── Modal ─────────────────────────────────────── */
+let _modalCb = null;
+function showModal(title, bodyHtml, confirmLabel, confirmClass, onConfirm) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.textContent = confirmLabel;
+  btn.className = `btn ${confirmClass}`;
+  _modalCb = onConfirm;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  _modalCb = null;
+}
+function confirmModal() {
+  if (_modalCb) _modalCb();
+  closeModal();
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
+
+/* ── Edit Round ─────────────────────────────────── */
+function editRound(roundIdx) {
+  const r = roundHistory.find(h => h.roundIdx === roundIdx);
+  if (!r) return;
+  const roundInfo = ROUNDS[roundIdx];
+  const inputStyle = `width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.6rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;text-align:center;outline:none;`;
+  const formHtml = `
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.75rem;">Modifica los puntajes de <strong style="color:#fff">${roundInfo.n}: ${roundInfo.name}</strong></p>
+    <label style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;cursor:pointer;font-weight:700;">
+      <input type="checkbox" id="edit_skip" ${r.skipped?'checked':''} onchange="document.getElementById('editScoreFields').style.opacity=this.checked?'0.3':'1'">
+      Ronda saltada (0 pts para todos)
+    </label>
+    <div id="editScoreFields" style="opacity:${r.skipped?'0.3':'1'}">
+      ${players.map(p => {
+        const safe = p.replace(/\W/g,'_');
+        return `<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
+          <span style="flex:1;font-weight:700;">${p}</span>
+          <input type="number" id="edit_${safe}" value="${r.scores[p]||0}" min="0" style="${inputStyle}">
+        </div>`;
+      }).join('')}
+    </div>`;
+  showModal(
+    `Editar ${roundInfo.n}`, formHtml, '💾 Guardar', 'btn-success',
+    () => {
+      const skipped = document.getElementById('edit_skip').checked;
+      r.skipped = skipped;
+      players.forEach(p => {
+        if (skipped) {
+          r.scores[p] = 0;
+        } else {
+          const el = document.getElementById(`edit_${p.replace(/\W/g,'_')}`);
+          if (el) r.scores[p] = parseInt(el.value)||0;
+        }
+      });
+      renderProgress();
+      renderScoreTable();
+      persistGameState();
+      showToast(`✓ ${roundInfo.n} actualizada`);
+    }
+  );
+}
 </script>
 </body>
 </html>

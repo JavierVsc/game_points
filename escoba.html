@@ -90,6 +90,7 @@
   .score-table tbody tr:hover { background:rgba(255,255,255,0.03); }
   .total-cell { font-weight:900; color:var(--accent); font-size:1.05rem; }
   .leader-row td { background:rgba(240,80,96,0.06); }
+  .inline-total { display:inline-block; font-size:0.78rem; font-weight:900; color:var(--accent); background:rgba(255,255,255,0.08); border-radius:8px; padding:0.1rem 0.4rem; margin-left:0.35rem; vertical-align:middle; }
 
   .podium { display:flex; flex-direction:column; gap:0.75rem; }
   .podium-item { display:flex; align-items:center; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1rem 1.25rem; }
@@ -118,6 +119,19 @@
 
   .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(100px); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0.75rem 1.5rem; font-weight:700; color:var(--text); z-index:999; transition:transform 0.3s; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
   .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* Modal */
+  .modal-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:2rem; max-width:480px; width:100%; max-height:85vh; overflow-y:auto; transform:translateY(20px) scale(0.97); transition:transform 0.25s; }
+  .modal-overlay.open .modal-box { transform:translateY(0) scale(1); }
+  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.06em; color:#fff; margin-bottom:0.5rem; }
+  .modal-body { color:var(--muted); font-size:0.95rem; line-height:1.6; margin-bottom:1.5rem; }
+  .modal-actions { display:flex; gap:0.75rem; flex-wrap:wrap; }
+  .modal-actions .btn { flex:1; justify-content:center; }
+  /* Edit-round button */
+  .edit-round-btn { background:none; border:none; cursor:pointer; font-size:0.65rem; padding:0.15rem 0.3rem; border-radius:4px; opacity:0.45; transition:opacity 0.2s,background 0.2s; vertical-align:middle; margin-left:0.25rem; color:var(--accent); }
+  .edit-round-btn:hover { opacity:1; background:var(--accent-dim); }
 
   @media(max-width:480px) {
     .input-row { flex-direction:column; }
@@ -211,6 +225,7 @@
     </div>
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
       <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">📋 Ver Historial</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">🎮 Nueva Partida</button>
     </div>
     <div class="card" id="historyCard" style="display:none;margin-top:1.5rem;">
       <div class="card-title">📋 Historial de Manos</div>
@@ -219,9 +234,23 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirmBtn" onclick="confirmModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
+function sanitize(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 let players = [];
 let roundHistory = []; // {round, scores:{name:total}, breakdown:{name:{escobas,allOros,majorityOros,guindis,fourSevens,majoritySevens,majorityCards,rivalUnder10}}}
 let currentRound = 1;
@@ -254,7 +283,7 @@ function renderPlayerList() {
   if (!players.length) { list.innerHTML = '<p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>'; return; }
   list.innerHTML = players.map((p,i) => `
     <div class="player-chip">
-      <span>🎮 ${p}</span>
+      <span>🎮 ${sanitize(p)}</span>
       <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
     </div>`).join('');
 }
@@ -271,14 +300,16 @@ function startGame() {
 }
 
 function buildTableHead() {
-  document.getElementById('tableHead').innerHTML =
-    '<th>Jugador</th><th style="font-size:0.7rem;">Manos...</th><th>Total</th>';
+  document.getElementById('tableHead').innerHTML = '<th>Jugador</th>';
 }
 
 function updateTableHead() {
   const n = roundHistory.length;
   document.getElementById('tableHead').innerHTML =
-    '<th>Jugador</th>' + Array.from({length:n},(_,i)=>`<th>M${i+1}</th>`).join('') + '<th>Total</th>';
+    '<th>Jugador</th>' +
+    Array.from({length:n},(_,i)=>
+      `<th>M${i+1}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar mano ${i+1}">✏</button></th>`
+    ).join('');
 }
 
 function renderBreakdown() {
@@ -288,11 +319,11 @@ function renderBreakdown() {
     const safe = p.replace(/\s/g,'_');
     return `
     <div class="score-breakdown">
-      <div class="breakdown-player">🎮 ${p}</div>
+      <div class="breakdown-player">🎮 ${sanitize(p)}</div>
       <div class="breakdown-grid">
         <div class="mini-field">
           <label>🧹 Escobas</label>
-          <input type="number" id="escobas_${safe}" placeholder="0" min="0" oninput="updateSubtotal('${safe}')">
+          <input type="number" id="escobas_${safe}" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*" oninput="updateSubtotal('${safe}')">
         </div>
         <div class="mini-field">
           <label>💰 Todos los Oros</label>
@@ -406,21 +437,26 @@ function renderScoreTable() {
   const totals = getTotals();
   const maxTotal = Math.max(...Object.values(totals));
   const body = document.getElementById('tableBody');
-  body.innerHTML = players.map(p => {
+  // Sort players by total descending (leader on top)
+  const sorted = [...players].sort((a,b) => totals[b] - totals[a]);
+  body.innerHTML = sorted.map(p => {
     const isLeader = totals[p] === maxTotal && roundHistory.length > 0;
     const cells = roundHistory.map(r => `<td>${r.scores[p]??0}</td>`).join('');
     return `<tr class="${isLeader?'leader-row':''}">
-      <td style="font-weight:700">${isLeader?'👑 ':''}${p}</td>
+      <td style="font-weight:700">${isLeader?'👑 ':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
       ${cells}
-      <td class="total-cell">${totals[p]}</td>
     </tr>`;
   }).join('');
 }
 
 function confirmEndGame() {
   if (roundHistory.length === 0) return showToast('Juega al menos una mano antes de finalizar');
-  if (!confirm('¿Finalizar el juego y ver los resultados?')) return;
-  endGame();
+  showModal(
+    '🏁 Finalizar Juego',
+    '¿Estás seguro que quieres finalizar y ver los resultados finales?',
+    '🏁 Finalizar', 'btn-danger',
+    () => endGame()
+  );
 }
 
 function endGame(shouldScroll = true) {
@@ -430,7 +466,7 @@ function endGame(shouldScroll = true) {
   document.getElementById('podium').innerHTML = sorted.map((p,i) => `
     <div class="podium-item place-${Math.min(i+1,4)}" style="animation:fadeIn ${0.1+i*0.15}s ease both">
       <div class="place-num">${i+1}°</div>
-      <div class="place-name">${p}</div>
+      <div class="place-name">${sanitize(p)}</div>
       <div class="place-score">${totals[p]} pts</div>
       <div class="place-medal">${medals[i]||''}</div>
     </div>`).join('');
@@ -462,19 +498,25 @@ function viewHistory() {
 function buildHistoryTable() {
   const table = document.getElementById('historyTable');
   const totals = getTotals();
-  table.innerHTML = `<thead><tr><th>Mano</th>${players.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
+  table.innerHTML = `<thead><tr><th>Mano</th>${players.map(p=>`<th>${sanitize(p)}</th>`).join('')}</tr></thead>
     <tbody>${roundHistory.map(r=>`<tr><td style="font-weight:700">Mano ${r.round}</td>${players.map(p=>`<td>${r.scores[p]??0}</td>`).join('')}</tr>`).join('')}
     <tr style="background:rgba(240,80,96,0.06)"><td style="font-weight:900;color:var(--accent)">TOTAL</td>${players.map(p=>`<td class="total-cell">${totals[p]}</td>`).join('')}</tr>
     </tbody>`;
 }
 
 function restartGame() {
-  if (!confirm('¿Comenzar una nueva partida? Se perderán los datos actuales.')) return;
-  players = []; roundHistory = []; currentRound = 1;
-  renderPlayerList();
-  syncStartButton();
-  clearSavedGame();
-  showPhase('phaseSetup');
+  showModal(
+    '🗑 Reiniciar Juego',
+    '¿Comenzar una nueva partida? Se perderán todos los datos actuales.',
+    '🗑 Reiniciar', 'btn-danger',
+    () => {
+      players = []; roundHistory = []; currentRound = 1;
+      renderPlayerList();
+      syncStartButton();
+      clearSavedGame();
+      showPhase('phaseSetup');
+    }
+  );
 }
 
 function showPhase(id, shouldScroll = true) {
@@ -607,6 +649,79 @@ function restoreSavedGame() {
 }
 
 restoreSavedGame();
+
+/* ── Modal ─────────────────────────────────────── */
+let _modalCb = null;
+function showModal(title, bodyHtml, confirmLabel, confirmClass, onConfirm) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.textContent = confirmLabel;
+  btn.className = `btn ${confirmClass}`;
+  _modalCb = onConfirm;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  _modalCb = null;
+}
+function confirmModal() {
+  if (_modalCb) _modalCb();
+  closeModal();
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
+
+/* ── Edit Round ─────────────────────────────────── */
+function editRound(roundIdx) {
+  const r = roundHistory[roundIdx];
+  if (!r) return;
+  const iStyle = `width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.5rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.9rem;font-weight:700;text-align:center;outline:none;`;
+  const sStyle = `width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.5rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.9rem;font-weight:700;outline:none;`;
+  const mkSel = (id, val, opts) =>
+    `<select id="${id}" style="${sStyle}">${opts.map(([v,l])=>`<option value="${v}"${v==val?'selected':''}>${l}</option>`).join('')}</select>`;
+  const formHtml = players.map(p => {
+    const safe = p.replace(/\W/g,'_');
+    const bd = r.breakdown[p] || {};
+    return `<div style="margin-bottom:1rem;padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:12px;">
+      <div style="font-weight:900;margin-bottom:0.6rem;">🎮 ${sanitize(p)}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;">
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🧹 Escobas</div><input type="number" id="ed_escobas_${safe}" value="${bd.escobas||0}" min="0" style="${iStyle}"></div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">💰 Todos los Oros</div>${mkSel(`ed_allOros_${safe}`,bd.allOros||0,[[0,'No'],[2,'Sí (+2)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🪙 Mayoría Oros</div>${mkSel(`ed_majOros_${safe}`,bd.majorityOros||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">⭐ Guindis</div>${mkSel(`ed_guindis_${safe}`,bd.guindis||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">7️⃣ Los 4 Sietes</div>${mkSel(`ed_4sev_${safe}`,bd.fourSevens||0,[[0,'No'],[3,'Sí (+3)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🏅 Mayoría Sietes</div>${mkSel(`ed_majSev_${safe}`,bd.majoritySevens||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🃏 Mayoría Cartas</div>${mkSel(`ed_majCards_${safe}`,bd.majorityCards||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">📉 Rival &lt;10</div>${mkSel(`ed_rival_${safe}`,bd.rivalUnder10||0,[[0,'No'],[2,'Sí (+2)']])}</div>
+      </div>
+    </div>`;
+  }).join('');
+  showModal(
+    `Editar Mano ${roundIdx+1}`, formHtml, '💾 Guardar', 'btn-success',
+    () => {
+      players.forEach(p => {
+        const safe = p.replace(/\W/g,'_');
+        const g = id => parseInt(document.getElementById(id)?.value)||0;
+        const escobas      = g(`ed_escobas_${safe}`);
+        const allOros      = g(`ed_allOros_${safe}`);
+        const majorityOros = g(`ed_majOros_${safe}`);
+        const guindis      = g(`ed_guindis_${safe}`);
+        const fourSevens   = g(`ed_4sev_${safe}`);
+        const majoritySevens = g(`ed_majSev_${safe}`);
+        const majorityCards  = g(`ed_majCards_${safe}`);
+        const rivalUnder10   = g(`ed_rival_${safe}`);
+        r.breakdown[p] = {escobas,allOros,majorityOros,guindis,fourSevens,majoritySevens,majorityCards,rivalUnder10};
+        r.scores[p] = escobas+allOros+majorityOros+guindis+fourSevens+majoritySevens+majorityCards+rivalUnder10;
+      });
+      updateTableHead();
+      renderScoreTable();
+      persistGameState();
+      showToast(`✓ Mano ${roundIdx+1} actualizada`);
+    }
+  );
+}
 </script>
 </body>
 </html>

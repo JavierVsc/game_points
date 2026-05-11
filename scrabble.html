@@ -19,6 +19,7 @@
     --border: rgba(240,192,64,0.15);
     --green: #4ade80;
     --red: #f87171;
+    --yellow: #fbbf24;
   }
   html,body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; color:var(--text); overflow-x:hidden; }
   body::before {
@@ -102,6 +103,7 @@
   .score-table tbody tr:hover { background:rgba(255,255,255,0.03); }
   .total-cell { font-weight:900; color:var(--accent); font-size:1.05rem; }
   .leader-row td { background:rgba(240,192,64,0.06); }
+  .inline-total { display:inline-block; font-size:0.78rem; font-weight:900; color:var(--accent); background:rgba(255,255,255,0.08); border-radius:8px; padding:0.1rem 0.4rem; margin-left:0.35rem; vertical-align:middle; }
 
   /* Results */
   .podium { display:flex; flex-direction:column; gap:0.75rem; }
@@ -129,6 +131,24 @@
   /* Toast */
   .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(100px); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0.75rem 1.5rem; font-weight:700; color:var(--text); z-index:999; transition:transform 0.3s; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
   .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* Modal */
+  .modal-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:2rem; max-width:440px; width:100%; max-height:85vh; overflow-y:auto; transform:translateY(20px) scale(0.97); transition:transform 0.25s; }
+  .modal-overlay.open .modal-box { transform:translateY(0) scale(1); }
+  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.06em; color:#fff; margin-bottom:0.5rem; }
+  .modal-body { color:var(--muted); font-size:0.95rem; line-height:1.6; margin-bottom:1.5rem; }
+  .modal-actions { display:flex; gap:0.75rem; flex-wrap:wrap; }
+  .modal-actions .btn { flex:1; justify-content:center; }
+  /* Edit-round button */
+  .edit-round-btn { background:none; border:none; cursor:pointer; font-size:0.65rem; padding:0.15rem 0.3rem; border-radius:4px; opacity:0.45; transition:opacity 0.2s,background 0.2s; vertical-align:middle; margin-left:0.25rem; color:var(--accent); }
+  .edit-round-btn:hover { opacity:1; background:var(--accent-dim); }
+  /* Skip-turn per player */
+  .btn-skip-turn { background:none; border:1px solid rgba(255,255,255,0.15); color:var(--muted); cursor:pointer; font-size:0.7rem; font-weight:700; letter-spacing:0.04em; padding:0.2rem 0.55rem; border-radius:6px; transition:all 0.2s; font-family:'Nunito',sans-serif; }
+  .btn-skip-turn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .btn-skip-turn.active { border-color:var(--red); color:var(--red); background:rgba(248,113,113,0.1); }
+  .score-field.is-skipped input { opacity:0.35; pointer-events:none; }
 
   @media(max-width:480px) {
     .input-row { flex-direction:column; }
@@ -176,6 +196,7 @@
         <div>
           <div class="card-title">Ingresa los Puntajes</div>
           <div class="round-badge" id="roundLabel">Ronda 1</div>
+          <div id="roundCounter" style="font-size:0.78rem;color:var(--muted);margin-top:0.15rem;"></div>
         </div>
       </div>
       <div class="score-grid" id="scoreGrid"></div>
@@ -207,6 +228,7 @@
     </div>
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
       <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">📋 Ver Historial</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">🎮 Nueva Partida</button>
     </div>
 
     <!-- History card (hidden initially) -->
@@ -217,9 +239,23 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirmBtn" onclick="confirmModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
+function sanitize(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 let players = [];
 let roundHistory = [];
 let currentRound = 1;
@@ -253,7 +289,7 @@ function renderPlayerList() {
   if (!players.length) { list.innerHTML = '<p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>'; return; }
   list.innerHTML = players.map((p,i) => `
     <div class="player-chip">
-      <span>🎮 ${p}</span>
+      <span>🎮 ${sanitize(p)}</span>
       <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
     </div>`).join('');
 }
@@ -271,21 +307,46 @@ function startGame() {
 }
 
 function buildTableHead() {
-  const head = document.getElementById('tableHead');
-  head.innerHTML = '<th>Jugador</th>' + players.map((_,i)=>`<th>R${i+1}...</th>`).join('') + '<th>Total</th>';
+  document.getElementById('tableHead').innerHTML = '<th>Jugador</th>';
 }
 
 function renderScoreInputs() {
   document.getElementById('roundLabel').textContent = `Ronda ${currentRound}`;
+  const counter = document.getElementById('roundCounter');
+  if (counter) counter.textContent = roundHistory.length > 0
+    ? `${roundHistory.length} ronda${roundHistory.length > 1 ? 's' : ''} jugada${roundHistory.length > 1 ? 's' : ''}`
+    : '';
   const grid = document.getElementById('scoreGrid');
-  grid.innerHTML = players.map(p => `
-    <div class="score-field">
-      <label>${p}</label>
-      <input type="number" id="score_${p.replace(/\s/g,'_')}" placeholder="0" min="0">
+  grid.innerHTML = players.map((p, i) => `
+    <div class="score-field" id="sf_${i}">
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+        <span>${sanitize(p)}</span>
+        <button type="button" class="btn-skip-turn" onclick="skipPlayerTurn(${i})">⏭ Saltar</button>
+      </label>
+      <input type="number" id="score_${p.replace(/\s/g,'_')}" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*">
     </div>`).join('');
-  // Focus first
-  const first = grid.querySelector('input');
+  const first = grid.querySelector('input:not([disabled])');
   if (first) first.focus();
+}
+
+function skipPlayerTurn(playerIdx) {
+  const p = players[playerIdx];
+  const field = document.getElementById(`sf_${playerIdx}`);
+  const input = document.getElementById(`score_${p.replace(/\s/g,'_')}`);
+  const btn = field?.querySelector('.btn-skip-turn');
+  if (!input || !field) return;
+  const isSkipped = field.classList.contains('is-skipped');
+  if (isSkipped) {
+    field.classList.remove('is-skipped');
+    input.value = '';
+    input.disabled = false;
+    if (btn) { btn.textContent = '⏭ Saltar'; btn.classList.remove('active'); }
+  } else {
+    field.classList.add('is-skipped');
+    input.value = '0';
+    input.disabled = true;
+    if (btn) { btn.textContent = '↩ Deshacer'; btn.classList.add('active'); }
+  }
 }
 
 function submitRound() {
@@ -317,26 +378,34 @@ function getTotals() {
 function renderScoreTable() {
   const head = document.getElementById('tableHead');
   const cols = roundHistory.length;
-  head.innerHTML = '<th>Jugador</th>' + Array.from({length:cols},(_,i)=>`<th>R${i+1}</th>`).join('') + '<th>Total</th>';
+  head.innerHTML = '<th>Jugador</th>' +
+    Array.from({length:cols},(_,i)=>
+      `<th>R${i+1}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar ronda ${i+1}">✏</button></th>`
+    ).join('');
 
   const totals = getTotals();
   const maxTotal = Math.max(...Object.values(totals));
   const body = document.getElementById('tableBody');
-  body.innerHTML = players.map(p => {
+  // Sort players by total descending (leader on top)
+  const sorted = [...players].sort((a,b) => totals[b] - totals[a]);
+  body.innerHTML = sorted.map(p => {
     const isLeader = totals[p] === maxTotal;
     const cells = roundHistory.map(r => `<td>${r.scores[p]??'-'}</td>`).join('');
     return `<tr class="${isLeader?'leader-row':''}">
-      <td style="font-weight:700">${isLeader?'👑 ':''}${p}</td>
+      <td style="font-weight:700">${isLeader?'👑 ':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
       ${cells}
-      <td class="total-cell">${totals[p]}</td>
     </tr>`;
   }).join('');
 }
 
 function confirmEndGame() {
   if (roundHistory.length === 0) return showToast('Juega al menos una ronda antes de finalizar');
-  if (!confirm('¿Finalizar el juego y ver los resultados?')) return;
-  endGame();
+  showModal(
+    '🏁 Finalizar Juego',
+    '¿Estás seguro que quieres finalizar y ver los resultados finales?',
+    '🏁 Finalizar', 'btn-danger',
+    () => endGame()
+  );
 }
 
 function endGame(shouldScroll = true) {
@@ -348,7 +417,7 @@ function endGame(shouldScroll = true) {
   podium.innerHTML = sorted.map((p,i) => `
     <div class="podium-item place-${Math.min(i+1,4)}" style="animation:fadeIn ${0.1+i*0.15}s ease both">
       <div class="place-num">${i+1}°</div>
-      <div class="place-name">${p}</div>
+      <div class="place-name">${sanitize(p)}</div>
       <div class="place-score">${totals[p]} pts</div>
       <div class="place-medal">${medals[i]||''}</div>
     </div>`).join('');
@@ -378,19 +447,25 @@ function viewHistory() {
 function buildHistoryTable() {
   const table = document.getElementById('historyTable');
   const totals = getTotals();
-  table.innerHTML = `<thead><tr><th>Ronda</th>${players.map(p=>`<th>${p}</th>`).join('')}</tr></thead>
+  table.innerHTML = `<thead><tr><th>Ronda</th>${players.map(p=>`<th>${sanitize(p)}</th>`).join('')}</tr></thead>
     <tbody>${roundHistory.map(r=>`<tr><td style="font-weight:700">Ronda ${r.round}</td>${players.map(p=>`<td>${r.scores[p]??'-'}</td>`).join('')}</tr>`).join('')}
     <tr style="background:rgba(240,192,64,0.06)"><td style="font-weight:900;color:var(--accent)">TOTAL</td>${players.map(p=>`<td class="total-cell">${totals[p]}</td>`).join('')}</tr>
     </tbody>`;
 }
 
 function restartGame() {
-  if (!confirm('¿Comenzar una nueva partida? Se perderán los datos actuales.')) return;
-  players = []; roundHistory = []; currentRound = 1; gameStarted = false;
-  renderPlayerList();
-  syncStartButton();
-  clearSavedGame();
-  showPhase('phaseSetup');
+  showModal(
+    '🗑 Reiniciar Juego',
+    '¿Comenzar una nueva partida? Se perderán todos los datos actuales.',
+    '🗑 Reiniciar', 'btn-danger',
+    () => {
+      players = []; roundHistory = []; currentRound = 1; gameStarted = false;
+      renderPlayerList();
+      syncStartButton();
+      clearSavedGame();
+      showPhase('phaseSetup');
+    }
+  );
 }
 
 function showPhase(id, shouldScroll = true) {
@@ -509,6 +584,56 @@ function restoreSavedGame() {
 }
 
 restoreSavedGame();
+
+/* ── Modal ─────────────────────────────────────── */
+let _modalCb = null;
+function showModal(title, bodyHtml, confirmLabel, confirmClass, onConfirm) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.textContent = confirmLabel;
+  btn.className = `btn ${confirmClass}`;
+  _modalCb = onConfirm;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  _modalCb = null;
+}
+function confirmModal() {
+  if (_modalCb) _modalCb();
+  closeModal();
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
+
+/* ── Edit Round ─────────────────────────────────── */
+function editRound(roundIdx) {
+  const r = roundHistory[roundIdx];
+  const inputStyle = `width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.6rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;text-align:center;outline:none;`;
+  const formHtml = `
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Modifica los puntajes de la <strong style="color:#fff">Ronda ${roundIdx+1}</strong>:</p>
+    ${players.map(p => {
+      const safe = p.replace(/\W/g,'_');
+      return `<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
+        <span style="flex:1;font-weight:700;">${p}</span>
+        <input type="number" id="edit_${safe}" value="${r.scores[p]||0}" min="0" style="${inputStyle}">
+      </div>`;
+    }).join('')}`;
+  showModal(
+    `Editar Ronda ${roundIdx+1}`, formHtml, '💾 Guardar', 'btn-success',
+    () => {
+      players.forEach(p => {
+        const el = document.getElementById(`edit_${p.replace(/\W/g,'_')}`);
+        if (el) r.scores[p] = parseInt(el.value) || 0;
+      });
+      renderScoreTable();
+      persistGameState();
+      showToast(`✓ Ronda ${roundIdx+1} actualizada`);
+    }
+  );
+}
 </script>
 </body>
 </html>
