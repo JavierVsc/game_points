@@ -1,303 +1,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎲 Marcador de Juegos</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0b0b18;
-    --surface: #13131f;
-    --border: rgba(255,255,255,0.07);
-    --scrabble: #f0c040;
-    --scrabble2: #e87a20;
-    --carioca: #34d9a5;
-    --carioca2: #1a8fc8;
-    --escoba: #f05060;
-    --escoba2: #c02080;
-  }
-
-  html, body {
-    min-height: 100vh;
-    background: var(--bg);
-    font-family: 'Nunito', sans-serif;
-    color: #fff;
-    overflow-x: hidden;
-  }
-
-  /* Animated background */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0;
-    background:
-      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(240,192,64,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(52,217,165,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 85% 15%, rgba(240,80,96,0.08) 0%, transparent 60%);
-    pointer-events: none;
-  }
-
-  /* Floating cards bg */
-  .bg-cards {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  }
-  .bg-card {
-    position: absolute;
-    font-size: clamp(3rem, 6vw, 7rem);
-    opacity: 0.04;
-    animation: floatCard linear infinite;
-    user-select: none;
-  }
-
-  @keyframes floatCard {
-    0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
-    5%   { opacity: 0.04; }
-    95%  { opacity: 0.04; }
-    100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
-  }
-
-  .wrapper {
-    position: relative; z-index: 1;
-    min-height: 100vh;
-    display: flex; flex-direction: column;
-    align-items: center;
-    padding: 3rem 1.5rem 4rem;
-  }
-
-  /* Header */
-  .logo-row {
-    display: flex; align-items: center; gap: 1rem;
-    margin-bottom: 0.5rem;
-    animation: fadeDown 0.7s ease both;
-  }
-  .logo-dice {
-    font-size: 3rem;
-    filter: drop-shadow(0 0 18px rgba(240,192,64,0.6));
-    animation: spin 8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(3rem, 9vw, 6rem);
-    letter-spacing: 0.05em;
-    background: linear-gradient(135deg, #fff 0%, #aaa 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    line-height: 1;
-  }
-
-  .subtitle {
-    font-size: clamp(0.9rem, 2.5vw, 1.15rem);
-    color: rgba(255,255,255,0.45);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 4rem;
-    animation: fadeDown 0.7s 0.15s ease both;
-  }
-
-  @keyframes fadeDown {
-    from { opacity:0; transform:translateY(-20px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
-
-  /* Game cards */
-  .games-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-    width: 100%; max-width: 1000px;
-  }
-
-  .game-card {
-    position: relative;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 2.5rem 2rem 2rem;
-    display: flex; flex-direction: column; align-items: center;
-    gap: 1rem;
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
-    text-decoration: none;
-    animation: cardIn 0.6s ease both;
-  }
-  .game-card:nth-child(1) { animation-delay: 0.2s; }
-  .game-card:nth-child(2) { animation-delay: 0.35s; }
-  .game-card:nth-child(3) { animation-delay: 0.5s; }
-
-  @keyframes cardIn {
-    from { opacity:0; transform:translateY(30px) scale(0.95); }
-    to   { opacity:1; transform:translateY(0) scale(1); }
-  }
-
-  /* Glow blob */
-  .game-card::before {
-    content: '';
-    position: absolute;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    filter: blur(60px);
-    top: -60px; left: 50%; transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.4s;
-  }
-  .game-card:hover::before { opacity: 1; }
-  .card-scrabble::before  { background: var(--scrabble); }
-  .card-carioca::before   { background: var(--carioca); }
-  .card-escoba::before    { background: var(--escoba); }
-
-  .game-card:hover {
-    transform: translateY(-8px) scale(1.02);
-  }
-  .card-scrabble:hover  { box-shadow: 0 20px 60px rgba(240,192,64,0.25); border-color: rgba(240,192,64,0.4); }
-  .card-carioca:hover   { box-shadow: 0 20px 60px rgba(52,217,165,0.25); border-color: rgba(52,217,165,0.4); }
-  .card-escoba:hover    { box-shadow: 0 20px 60px rgba(240,80,96,0.25);  border-color: rgba(240,80,96,0.4); }
-
-  /* Top accent bar */
-  .card-accent {
-    position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 24px 24px 0 0;
-  }
-  .card-scrabble .card-accent { background: linear-gradient(90deg, var(--scrabble), var(--scrabble2)); }
-  .card-carioca  .card-accent { background: linear-gradient(90deg, var(--carioca), var(--carioca2)); }
-  .card-escoba   .card-accent { background: linear-gradient(90deg, var(--escoba), var(--escoba2)); }
-
-  .card-emoji {
-    font-size: 4rem;
-    filter: drop-shadow(0 0 12px currentColor);
-    transition: transform 0.3s;
-    position: relative; z-index: 1;
-  }
-  .game-card:hover .card-emoji { transform: scale(1.15) rotate(-5deg); }
-
-  .card-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2.4rem;
-    letter-spacing: 0.08em;
-    position: relative; z-index: 1;
-  }
-  .card-scrabble .card-title  { color: var(--scrabble); }
-  .card-carioca  .card-title  { color: var(--carioca); }
-  .card-escoba   .card-title  { color: var(--escoba); }
-
-  .card-desc {
-    font-size: 0.9rem;
-    color: rgba(255,255,255,0.5);
-    text-align: center;
-    line-height: 1.6;
-    position: relative; z-index: 1;
-  }
-
-  .card-tag {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    font-size: 0.78rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    padding: 0.35rem 0.9rem;
-    border-radius: 999px;
-    position: relative; z-index: 1;
-    margin-top: auto;
-  }
-  .card-scrabble .card-tag { background: rgba(240,192,64,0.12); color: var(--scrabble); border: 1px solid rgba(240,192,64,0.3); }
-  .card-carioca  .card-tag { background: rgba(52,217,165,0.12); color: var(--carioca); border: 1px solid rgba(52,217,165,0.3); }
-  .card-escoba   .card-tag { background: rgba(240,80,96,0.12);  color: var(--escoba);  border: 1px solid rgba(240,80,96,0.3); }
-
-  .btn-play {
-    width: 100%;
-    padding: 0.9rem;
-    border-radius: 14px;
-    border: none;
-    font-family: 'Nunito', sans-serif;
-    font-size: 1rem; font-weight: 900;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.2s;
-    position: relative; z-index: 1;
-    margin-top: 0.5rem;
-  }
-  .btn-play:hover { opacity: 0.88; transform: scale(0.98); }
-  .card-scrabble .btn-play { background: linear-gradient(135deg, var(--scrabble), var(--scrabble2)); color: #1a1000; }
-  .card-carioca  .btn-play { background: linear-gradient(135deg, var(--carioca), var(--carioca2)); color: #001a12; }
-  .card-escoba   .btn-play { background: linear-gradient(135deg, var(--escoba), var(--escoba2)); color: #1a0010; }
-
-  /* Footer */
-  .footer {
-    margin-top: 4rem;
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.2);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    animation: fadeDown 0.7s 0.7s ease both;
-  }
-
-  @media (max-width: 480px) {
-    .wrapper { padding: 2rem 1rem 3rem; }
-    .games-grid { grid-template-columns: 1fr; }
-    .logo-dice { display: none; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a1423">
+  <title>Marcador de Juegos</title>
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body>
-
-<div class="bg-cards" id="bgCards"></div>
-
-<div class="wrapper">
-  <div class="logo-row">
-    <span class="logo-dice">🎲</span>
-    <h1>Marcador de Juegos</h1>
-  </div>
-  <p class="subtitle">Elige tu juego y comienza a jugar</p>
-
-  <div class="games-grid">
-
-    <!-- Scrabble -->
-    <a class="game-card card-scrabble" href="scrabble.html" target="_blank">
-      <div class="card-accent"></div>
-      <div class="card-emoji">🔤</div>
-      <div class="card-title">Scrabble</div>
-      <p class="card-desc">Acumula la mayor cantidad de puntos formando palabras. ¡El que más puntúa, gana!</p>
-      <span class="card-tag">🏆 Mayor puntaje gana</span>
-      <button class="btn-play">Jugar →</button>
-    </a>
-
-    <!-- Carioca -->
-    <a class="game-card card-carioca" href="carioca.html" target="_blank">
-      <div class="card-accent"></div>
-      <div class="card-emoji">🃏</div>
-      <div class="card-title">Carioca</div>
-      <p class="card-desc">11 rondas de tríos y escalas con naipe inglés. El que menos puntos acumule, ¡gana!</p>
-      <span class="card-tag">🎯 Menor puntaje gana</span>
-      <button class="btn-play">Jugar →</button>
-    </a>
-
-    <!-- Escoba -->
-    <a class="game-card card-escoba" href="escoba.html" target="_blank">
-      <div class="card-accent"></div>
-      <div class="card-emoji">🧹</div>
-      <div class="card-title">Escoba</div>
-      <p class="card-desc">Captura cartas sumando 15 con naipe español. Acumula escobas, oros y sietes para ganar.</p>
-      <span class="card-tag">🏆 Mayor puntaje gana</span>
-      <button class="btn-play">Jugar →</button>
-    </a>
-
-  </div>
-
-  <p class="footer">© Game Night — Marcador Digital</p>
-</div>
-
-<script>
-  const symbols = ['♠','♥','♦','♣','🃏','★','♟','🎲','A','K','Q','J'];
-  const container = document.getElementById('bgCards');
-  for (let i = 0; i < 18; i++) {
-    const el = document.createElement('div');
-    el.className = 'bg-card';
-    el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-    el.style.left = `${Math.random() * 100}%`;
-    el.style.animationDuration = `${12 + Math.random() * 18}s`;
-    el.style.animationDelay = `${-Math.random() * 20}s`;
-    container.appendChild(el);
-  }
-</script>
+<body class="home">
+  <main class="home-shell">
+    <header class="home-header">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="5" y="5" width="38" height="38" rx="11" stroke="currentColor" stroke-width="2"/><path d="M16 30V18l8 8 8-8v12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <span class="brand-name">MARCADOR<span class="brand-dot">.</span></span>
+      <span class="brand-caption">NOCHE DE JUEGOS</span>
+    </header>
+    <section class="home-intro" aria-labelledby="home-title">
+      <div class="eyebrow"><span class="eyebrow-line"></span> TU MESA, TUS REGLAS</div>
+      <h1 id="home-title">Cada punto<br><em>cuenta.</em></h1>
+      <p>Marcadores claros para seguir la partida, ronda a ronda. Elige un juego y deja que el tablero lleve la cuenta.</p>
+    </section>
+    <section class="game-section" aria-labelledby="games-title">
+      <div class="section-heading"><div><span class="section-kicker">01 / COLECCIÓN</span><h2 id="games-title">Elige un juego</h2></div><span class="game-count">04 juegos disponibles</span></div>
+      <div class="games-grid">
+        <a class="game-card card-scrabble" href="scrabble.html" aria-label="Abrir marcador de Scrabble">
+          <div class="game-card-top"><span class="game-number">01</span><span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M8 6h10v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="game-art art-scrabble" aria-hidden="true"><span>S</span><span>C</span><span>R</span></div>
+          <div class="game-card-content"><span class="card-category">PALABRAS · PUNTUACIÓN</span><h3>Scrabble</h3><p>Forma palabras, suma puntos y lleva el control de cada turno.</p><span class="score-rule">Gana quien más puntos suma</span></div>
+        </a>
+        <a class="game-card card-carioca" href="carioca.html" aria-label="Abrir marcador de Carioca">
+          <div class="game-card-top"><span class="game-number">02</span><span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M8 6h10v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="game-art art-carioca" aria-hidden="true"><span class="playing-card card-one">A<span>♠</span></span><span class="playing-card card-two">K<span>♠</span></span></div>
+          <div class="game-card-content"><span class="card-category">CARTAS · 11 RONDAS</span><h3>Carioca</h3><p>Tríos y escalas en once rondas. Sigue el orden de la clasificación.</p><span class="score-rule">Gana quien menos puntos suma</span></div>
+        </a>
+        <a class="game-card card-escoba" href="escoba.html" aria-label="Abrir marcador de Escoba">
+          <div class="game-card-top"><span class="game-number">03</span><span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M8 6h10v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="game-art art-escoba" aria-hidden="true"><span>15</span><i></i></div>
+          <div class="game-card-content"><span class="card-category">CARTAS · NAIPE ESPAÑOL</span><h3>Escoba</h3><p>Registra escobas, oros y sietes en cada mano.</p><span class="score-rule">Gana quien más puntos suma</span></div>
+        </a>
+        <a class="game-card card-tren" href="tren_mexicano.html" aria-label="Abrir marcador de Tren Mexicano">
+          <div class="game-card-top"><span class="game-number">04</span><span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18 18 6M8 6h10v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="game-art art-tren" aria-hidden="true"><span class="domino-half"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="domino-divider"></span><span class="domino-half"><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+          <div class="game-card-content"><span class="card-category">DOMINÓ · 13 RONDAS</span><h3>Tren Mexicano</h3><p>Del chancho 12 al 0, juega las rondas en el orden que prefieras.</p><span class="score-rule">Gana quien menos puntos suma</span></div>
+        </a>
+      </div>
+    </section>
+    <footer class="home-footer"><span>MARCADOR DIGITAL</span><span>HECHO PARA COMPARTIR LA MESA</span></footer>
+  </main>
 </body>
 </html>

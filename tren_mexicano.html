@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tren Mexicano · Marcador</title>
+  <style>
+    :root { color-scheme: dark; --tm-bg:#0a1423; --tm-panel:#121f30; --tm-panel-2:#18283a; --tm-line:#2b3d50; --tm-text:#f4f6f7; --tm-muted:#b6c4d0; --tm-accent:#dbad71; --tm-danger:#f29c97; --accent:var(--tm-accent); }
+    *, *::before, *::after { box-sizing:border-box; }
+    html { background:var(--tm-bg); }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse 65% 40% at 95% 0%,rgba(215,173,117,.11),transparent 75%),var(--tm-bg); color:var(--tm-text); font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:not-allowed; opacity:.55; }
+    :focus-visible { outline:3px solid var(--tm-accent); outline-offset:3px; }
+    .tm-app { max-width:980px; margin:auto; padding:28px clamp(16px,4vw,40px) 80px; }
+    .tm-back { color:var(--tm-muted); text-decoration:none; display:inline-block; margin-bottom:26px; }
+    .tm-back:hover { color:var(--tm-text); }
+    .tm-header { display:flex; align-items:center; gap:20px; margin-bottom:32px; }
+    .tm-mark { flex:none; width:62px; height:62px; border:2px solid var(--tm-accent); border-radius:13px; padding:9px; color:var(--tm-accent); }
+    .tm-kicker { margin:0 0 4px; color:var(--tm-accent); text-transform:uppercase; letter-spacing:.15em; font-size:.76rem; font-weight:800; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { margin-bottom:3px; font-size:clamp(2rem,6vw,3.6rem); letter-spacing:-.045em; line-height:1.05; }
+    h2 { font-size:clamp(1.25rem,3vw,1.65rem); letter-spacing:-.02em; }
+    h3 { font-size:1rem; }
+    .tm-subtitle,.tm-muted { color:var(--tm-muted); }
+    .tm-subtitle { margin:0; }
+    .tm-panel { background:var(--tm-panel); border:1px solid var(--tm-line); border-radius:18px; padding:clamp(18px,3vw,28px); margin-bottom:18px; box-shadow:0 16px 38px rgba(0,0,0,.13); }
+    .tm-panel-head,.tm-toolbar,.tm-session-head { display:flex; align-items:start; justify-content:space-between; gap:12px; }
+    .tm-panel-head { margin-bottom:20px; }
+    .tm-panel-head h2 { margin:0; }
+    .tm-toolbar { flex-wrap:wrap; margin-bottom:18px; }
+    .tm-actions { display:flex; gap:9px; flex-wrap:wrap; }
+    .tm-btn { border:1px solid var(--tm-line); border-radius:10px; padding:10px 16px; background:var(--tm-panel-2); color:var(--tm-text); font-weight:700; min-height:44px; transition:background .15s,border-color .15s; }
+    .tm-btn:hover { background:#303e4d; border-color:#718399; }
+    .tm-btn-primary { background:var(--tm-accent); color:#1d1b17; border-color:var(--tm-accent); }
+    .tm-btn-primary:hover { background:#ecc493; border-color:#ecc493; }
+    .tm-btn-danger { color:var(--tm-danger); }
+    .tm-btn-danger:hover { border-color:var(--tm-danger); }
+    .tm-icon-btn { width:44px; padding:9px; display:inline-grid; place-items:center; }
+    .tm-icon-btn svg { width:19px; height:19px; }
+    .tm-input,.tm-select { width:100%; background:var(--tm-panel-2); border:1px solid #607084; border-radius:10px; color:var(--tm-text); padding:11px 13px; min-height:46px; }
+    .tm-input::placeholder { color:#aebbc8; }
+    .tm-label { display:block; margin-bottom:7px; font-size:.91rem; font-weight:700; }
+    .tm-form-row { display:flex; gap:10px; align-items:end; }
+    .tm-form-row > div { flex:1; min-width:0; }
+    .tm-list { display:grid; gap:12px; }
+    .tm-session { background:var(--tm-panel-2); border:1px solid var(--tm-line); border-radius:13px; padding:16px; }
+    .tm-session h3 { margin:0 0 4px; font-size:1.12rem; overflow-wrap:anywhere; }
+    .tm-session-meta { color:var(--tm-muted); font-size:.88rem; margin:0 0 7px; }
+    .tm-session-players { margin:0 0 14px; overflow-wrap:anywhere; }
+    .tm-pill { display:inline-block; border:1px solid #6a614d; color:#f0cf9e; border-radius:20px; padding:2px 9px; font-size:.74rem; font-weight:700; }
+    .tm-empty { color:var(--tm-muted); border:1px dashed var(--tm-line); border-radius:12px; padding:23px; text-align:center; }
+    .tm-player-list { list-style:none; padding:0; margin:0 0 18px; display:grid; gap:8px; }
+    .tm-player-list li { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px; background:var(--tm-panel-2); border-radius:9px; }
+    .tm-player-list span { overflow-wrap:anywhere; }
+    .tm-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:18px 0; }
+    .tm-progress { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
+    .tm-progress span { border-radius:7px; border:1px solid var(--tm-line); padding:5px 9px; color:var(--tm-muted); font-size:.77rem; }
+    .tm-progress span.tm-done { background:#313a36; color:#c5dfce; border-color:#688174; }
+    .tm-table-wrap { overflow-x:auto; }
+    .tm-table { border-collapse:collapse; width:100%; min-width:410px; }
+    .tm-table th,.tm-table td { padding:11px 10px; border-bottom:1px solid var(--tm-line); text-align:left; }
+    .tm-table th { color:var(--tm-muted); font-size:.77rem; text-transform:uppercase; letter-spacing:.08em; }
+    .tm-table td:nth-child(3),.tm-table th:nth-child(3) { text-align:right; }
+    .tm-table tr:first-child td { color:#f0cf9e; font-weight:800; }
+    .tm-history { display:grid; gap:9px; }
+    .tm-history-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:11px 13px; border:1px solid var(--tm-line); border-radius:10px; background:var(--tm-panel-2); }
+    .tm-history-row p { margin:0; color:var(--tm-muted); font-size:.86rem; overflow-wrap:anywhere; }
+    .tm-status { min-height:1.5em; color:var(--tm-danger); margin:0 0 12px; }
+    .tm-hidden { display:none !important; }
+    @media(max-width:580px) { .tm-header { align-items:start; } .tm-mark { width:48px; height:48px; } .tm-form-row { display:block; } .tm-form-row .tm-btn { margin-top:10px; width:100%; } .tm-toolbar > .tm-btn { width:100%; } }
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+  <main class="tm-app">
+    <a class="tm-back" href="index.html">← Volver a juegos</a>
+    <header class="tm-header">
+      <svg class="tm-mark" viewBox="0 0 44 44" fill="none" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="6" stroke="currentColor" stroke-width="2"/><path d="M3 41 41 3" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="20" cy="19" r="2" fill="currentColor"/><circle cx="31" cy="32" r="2" fill="currentColor"/></svg>
+      <div><p class="tm-kicker">Marcador · dominó doble doce</p><h1>Tren Mexicano</h1><p class="tm-subtitle">13 chanchos, de 12 a 0. Gana quien acumule menos puntos.</p></div>
+    </header>
+
+    <section id="tmLibrary" aria-labelledby="tmLibraryTitle">
+      <div class="tm-toolbar"><h2 id="tmLibraryTitle">Partidas en curso</h2><div class="tm-actions"><button type="button" class="tm-btn tm-btn-primary" id="tmNewButton">Nueva partida</button><button type="button" class="tm-btn tm-btn-danger tm-hidden" id="tmClearButton">Limpiar partidas en curso</button></div></div>
+      <p class="tm-muted">Las partidas se guardan en este navegador y dispositivo.</p>
+      <div id="tmSessionList" class="tm-list"></div>
+      <div id="tmFinishedSection" class="tm-hidden"><h2>Partidas finalizadas</h2><div id="tmFinishedList" class="tm-list"></div></div>
+    </section>
+
+    <section id="tmCreate" class="tm-hidden" aria-labelledby="tmCreateTitle">
+      <div class="tm-panel"><h2 id="tmCreateTitle">Primero, el nombre de la partida</h2><p class="tm-muted">Después podrás agregar a los participantes.</p><form id="tmCreateForm"><label class="tm-label" for="tmName">Nombre de la partida</label><div class="tm-form-row"><div><input class="tm-input" id="tmName" type="text" maxlength="60" autocomplete="off" placeholder="Por ejemplo, Tarde de domingo" required></div><button class="tm-btn tm-btn-primary" type="submit">Continuar</button></div></form><p class="tm-status" id="tmCreateStatus" role="alert"></p><button type="button" class="tm-btn" id="tmCancelCreate">Volver a partidas</button></div>
+    </section>
+
+    <section id="tmSetup" class="tm-hidden" aria-labelledby="tmSetupTitle">
+      <div class="tm-panel"><p class="tm-kicker" id="tmSetupName"></p><h2 id="tmSetupTitle">Participantes</h2><p class="tm-muted">Agrega al menos dos jugadores. Podrás comenzar cuando estén todos.</p><ul class="tm-player-list" id="tmPlayerList"></ul><form id="tmPlayerForm"><label class="tm-label" for="tmPlayerName">Nombre del jugador</label><div class="tm-form-row"><div><input class="tm-input" id="tmPlayerName" type="text" maxlength="30" autocomplete="off" placeholder="Nombre" required></div><button class="tm-btn" type="submit">Agregar jugador</button></div></form><p class="tm-status" id="tmPlayerStatus" role="alert"></p><div class="tm-actions"><button type="button" class="tm-btn tm-btn-primary" id="tmStartButton">Comenzar partida</button><button type="button" class="tm-btn" data-library>Volver a partidas</button></div></div>
+    </section>
+
+    <section id="tmGame" class="tm-hidden" aria-labelledby="tmGameTitle">
+      <div class="tm-toolbar"><div><p class="tm-kicker" id="tmGameDate"></p><h2 id="tmGameTitle"></h2><p class="tm-muted" id="tmGamePlayers"></p></div><button type="button" class="tm-btn" data-library>Volver a partidas</button></div>
+      <div class="tm-panel"><div class="tm-panel-head"><h2>Rondas</h2><span class="tm-pill" id="tmRoundCount"></span></div><p class="tm-muted">Elige cualquier chancho pendiente. Cada uno se juega una sola vez.</p><div class="tm-progress" id="tmProgress"></div></div>
+      <div class="tm-panel" id="tmRoundPanel"><h2>Registrar ronda</h2><form id="tmRoundForm"><label class="tm-label" for="tmChancho">Chancho de esta ronda</label><select class="tm-select" id="tmChancho"></select><div class="tm-grid" id="tmScoreFields"></div><p class="tm-status" id="tmRoundStatus" role="alert"></p><button type="submit" class="tm-btn tm-btn-primary">Guardar ronda</button></form></div>
+      <div class="tm-panel"><h2 id="tmRankingTitle">Clasificación</h2><div class="tm-table-wrap"><table class="tm-table"><thead><tr><th>Posición</th><th>Jugador</th><th>Total</th></tr></thead><tbody id="tmRanking"></tbody></table></div></div>
+      <div class="tm-panel"><h2>Historial de rondas</h2><div class="tm-history" id="tmHistory"></div></div>
+    </section>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const KEY = 'game_points_tren_mexicano_v1';
+      const $ = id => document.getElementById(id);
+      const pageIds = ['tmLibrary', 'tmCreate', 'tmSetup', 'tmGame'];
+      let sessions = [];
+      let currentId = null;
+      let editingRound = null;
+
+      function showPage(id) {
+        pageIds.forEach(pageId => $(pageId).classList.toggle('tm-hidden', pageId !== id));
+      }
+      function status(id, message) { $(id).textContent = message; }
+      function dateLabel(iso) {
+        const date = new Date(iso);
+        return Number.isNaN(date.getTime()) ? 'Fecha no disponible' : new Intl.DateTimeFormat('es-CL', {dateStyle:'medium', timeStyle:'short'}).format(date);
+      }
+      function current() { return sessions.find(session => session.id === currentId); }
+      function save() {
+        try { localStorage.setItem(KEY, JSON.stringify(sessions)); return true; }
+        catch { window.alert('No se pudo guardar en este navegador. Revisa el almacenamiento antes de cerrar la página.'); return false; }
+      }
+      function load() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(KEY) || '[]');
+          if (!Array.isArray(parsed)) return;
+          sessions = parsed.filter(s => s && typeof s.id === 'string' && typeof s.name === 'string' && Array.isArray(s.players) && Array.isArray(s.rounds)).map(s => ({...s, players:s.players.filter(p => typeof p === 'string'), rounds:s.rounds.filter(r => r && Number.isInteger(r.chancho) && r.chancho >= 0 && r.chancho <= 12 && Array.isArray(r.scores))}));
+        } catch { sessions = []; window.alert('No se pudieron leer las partidas guardadas en este navegador.'); }
+      }
+      function make(tag, text, className) {
+        const element = document.createElement(tag);
+        if (text !== undefined) element.textContent = text;
+        if (className) element.className = className;
+        return element;
+      }
+      function button(text, onClick, className = '') {
+        const element = make('button', text, `tm-btn ${className}`);
+        element.type = 'button'; element.addEventListener('click', onClick); return element;
+      }
+      function trashButton(label, onClick) {
+        const element = button('', onClick, 'tm-btn-danger tm-icon-btn');
+        element.setAttribute('aria-label', label); element.title = label;
+        element.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 3h4M6 7l1 14h10l1-14M10 11v6m4-6v6"/></svg>';
+        return element;
+      }
+      function library() { currentId = null; editingRound = null; renderLibrary(); showPage('tmLibrary'); }
+      function renderLibrary() {
+        const list = $('tmSessionList'); const finished = $('tmFinishedList'); list.replaceChildren(); finished.replaceChildren();
+        const inProgress = sessions.filter(s => s.status !== 'complete').length;
+        $('tmClearButton').classList.toggle('tm-hidden', !inProgress);
+        $('tmFinishedSection').classList.toggle('tm-hidden', !sessions.some(s => s.status === 'complete'));
+        if (!inProgress) list.append(make('p', 'No hay partidas en curso. Crea una para comenzar.', 'tm-empty'));
+        sessions.slice().reverse().forEach(s => {
+          const article = make('article', undefined, 'tm-session');
+          const head = make('div', undefined, 'tm-session-head');
+          const info = make('div');
+          info.append(make('h3', s.name), make('p', `Inicio: ${dateLabel(s.startedAt)}`, 'tm-session-meta'));
+          head.append(info, trashButton(`Borrar partida ${s.name}`, () => deleteSession(s.id)));
+          const players = make('p', `Participantes: ${s.players.length ? s.players.join(', ') : 'pendientes'}`, 'tm-session-players');
+          const actions = make('div', undefined, 'tm-actions');
+          const label = s.status === 'complete' ? 'Finalizada' : `${s.rounds.length} de 13 rondas`;
+          actions.append(make('span', label, 'tm-pill'), button(s.status === 'complete' ? 'Ver resultado' : 'Retomar partida', () => openSession(s.id)));
+          article.append(head, players, actions); (s.status === 'complete' ? finished : list).append(article);
+        });
+      }
+      function deleteSession(id) {
+        const s = sessions.find(item => item.id === id);
+        if (!s || !window.confirm(`¿Borrar la partida «${s.name}»? Esta acción no se puede deshacer.`)) return;
+        sessions = sessions.filter(item => item.id !== id); save(); renderLibrary();
+      }
+      function clearInProgress() {
+        const count = sessions.filter(s => s.status !== 'complete').length;
+        if (!count || !window.confirm(`¿Borrar las ${count} partidas en curso? Esta acción no se puede deshacer.`)) return;
+        sessions = sessions.filter(s => s.status === 'complete'); save(); renderLibrary();
+      }
+      function openSession(id) {
+        currentId = id; editingRound = null;
+        const s = current();
+        if (!s) return library();
+        if (s.status === 'setup' || s.players.length < 2) renderSetup();
+        else renderGame();
+      }
+      function renderSetup() {
+        const s = current(); if (!s) return library();
+        $('tmSetupName').textContent = s.name;
+        const list = $('tmPlayerList'); list.replaceChildren();
+        if (!s.players.length) list.append(make('li', 'Aún no hay participantes.'));
+        s.players.forEach((name, i) => {
+          const li = make('li'); li.append(make('span', name), trashButton(`Quitar a ${name}`, () => { s.players.splice(i, 1); save(); renderSetup(); })); list.append(li);
+        });
+        $('tmStartButton').disabled = s.players.length < 2;
+        status('tmPlayerStatus', ''); showPage('tmSetup');
+      }
+      function sortedPlayers(s) {
+        return s.players.map((name, index) => ({name,index,total:s.rounds.reduce((sum, round) => sum + (Number(round.scores[index]) || 0), 0)}))
+          .sort((a,b) => a.total - b.total || a.index - b.index);
+      }
+      function renderGame() {
+        const s = current(); if (!s) return library();
+        $('tmGameTitle').textContent = s.name;
+        $('tmGameDate').textContent = `Inicio: ${dateLabel(s.startedAt)}`;
+        $('tmGamePlayers').textContent = `Participantes: ${s.players.join(', ')}`;
+        $('tmRoundCount').textContent = `${s.rounds.length} de 13 rondas`;
+        const progress = $('tmProgress'); progress.replaceChildren();
+        for (let n = 12; n >= 0; n--) {
+          const done = s.rounds.some(r => r.chancho === n);
+          progress.append(make('span', `Chancho ${n}${done ? ' · jugado' : ''}`, done ? 'tm-done' : ''));
+        }
+        $('tmRoundPanel').classList.toggle('tm-hidden', s.status === 'complete');
+        const select = $('tmChancho'); select.replaceChildren();
+        for (let n = 12; n >= 0; n--) {
+          if (s.rounds.some(r => r.chancho === n) && n !== editingRound) continue;
+          const option = make('option', `Chancho ${n}`); option.value = String(n); select.append(option);
+        }
+        if (editingRound !== null) select.value = String(editingRound);
+        renderScoreFields();
+        const ranking = $('tmRanking'); ranking.replaceChildren();
+        $('tmRankingTitle').textContent = s.status === 'complete' ? 'Resultado final · menor puntaje gana' : 'Clasificación · menor puntaje primero';
+        sortedPlayers(s).forEach((entry, index) => {
+          const tr = make('tr'); tr.append(make('td', `${index + 1}.`), make('td', entry.name), make('td', String(entry.total))); ranking.append(tr);
+        });
+        const history = $('tmHistory'); history.replaceChildren();
+        if (!s.rounds.length) history.append(make('p', 'Aún no se han registrado rondas.', 'tm-muted'));
+        s.rounds.forEach(round => {
+          const row = make('div', undefined, 'tm-history-row'); const details = make('div');
+          details.append(make('strong', `Chancho ${round.chancho}`), make('p', s.players.map((name,i) => `${name}: ${round.scores[i]}`).join(' · ')));
+          row.append(details, button('Corregir puntajes', () => editRound(round.chancho))); history.append(row);
+        });
+        status('tmRoundStatus', ''); showPage('tmGame');
+      }
+      function renderScoreFields() {
+        const s = current(); if (!s) return;
+        const fields = $('tmScoreFields'); fields.replaceChildren();
+        const previous = editingRound === null ? null : s.rounds.find(r => r.chancho === editingRound);
+        s.players.forEach((name,i) => {
+          const wrapper = make('div'); const input = make('input'); const id = `tmScore${i}`;
+          const label = make('label', name, 'tm-label'); label.htmlFor = id;
+          input.id = id; input.name = id; input.className = 'tm-input'; input.type = 'number'; input.inputMode = 'numeric'; input.min = '0'; input.step = '1'; input.required = true;
+          if (previous) input.value = String(previous.scores[i]);
+          wrapper.append(label,input); fields.append(wrapper);
+        });
+        const submit = $('tmRoundForm').querySelector('button[type="submit"]');
+        submit.textContent = editingRound === null ? 'Guardar ronda' : 'Guardar corrección';
+      }
+      function editRound(chancho) {
+        const s = current(); if (!s || !s.rounds.some(r => r.chancho === chancho)) return;
+        editingRound = chancho;
+        $('tmRoundPanel').classList.remove('tm-hidden');
+        const select = $('tmChancho'); select.replaceChildren();
+        const option = make('option', `Chancho ${chancho}`); option.value = String(chancho); select.append(option);
+        renderScoreFields(); $('tmRoundPanel').scrollIntoView({behavior:'smooth',block:'start'});
+      }
+      $('tmNewButton').addEventListener('click', () => { $('tmCreateForm').reset(); status('tmCreateStatus',''); showPage('tmCreate'); $('tmName').focus(); });
+      $('tmCancelCreate').addEventListener('click', library);
+      document.querySelectorAll('[data-library]').forEach(el => el.addEventListener('click', library));
+      $('tmClearButton').addEventListener('click', clearInProgress);
+      $('tmCreateForm').addEventListener('submit', event => {
+        event.preventDefault(); const name = $('tmName').value.trim();
+        if (!name) { status('tmCreateStatus','Escribe un nombre para la partida.'); return; }
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const session = {id,name,startedAt:new Date().toISOString(),players:[],rounds:[],status:'setup'};
+        sessions.push(session); currentId = id; save(); renderSetup(); $('tmPlayerName').focus();
+      });
+      $('tmPlayerForm').addEventListener('submit', event => {
+        event.preventDefault(); const s = current(); if (!s) return;
+        const name = $('tmPlayerName').value.trim();
+        if (!name) { status('tmPlayerStatus','Escribe el nombre del jugador.'); return; }
+        if (s.players.some(p => p.toLocaleLowerCase('es') === name.toLocaleLowerCase('es'))) { status('tmPlayerStatus','Este participante ya está agregado.'); return; }
+        s.players.push(name); $('tmPlayerForm').reset(); save(); renderSetup(); $('tmPlayerName').focus();
+      });
+      $('tmStartButton').addEventListener('click', () => {
+        const s = current(); if (!s || s.players.length < 2) return;
+        s.status = 'active'; save(); renderGame();
+      });
+      $('tmRoundForm').addEventListener('submit', event => {
+        event.preventDefault(); const s = current(); if (!s) return;
+        const chancho = Number($('tmChancho').value);
+        if (!Number.isInteger(chancho) || chancho < 0 || chancho > 12) { status('tmRoundStatus','Elige un chancho válido.'); return; }
+        if (editingRound === null && s.rounds.some(r => r.chancho === chancho)) { status('tmRoundStatus','Este chancho ya se jugó.'); return; }
+        const scores = s.players.map((_,i) => Number($(`tmScore${i}`).value));
+        if (scores.some((score,i) => !$(`tmScore${i}`).value.trim() || !Number.isSafeInteger(score) || score < 0)) { status('tmRoundStatus','Ingresa puntos enteros no negativos para todos los jugadores.'); return; }
+        if (editingRound === null) s.rounds.push({chancho,scores});
+        else { const round = s.rounds.find(r => r.chancho === editingRound); if (!round) return; round.scores = scores; }
+        editingRound = null; s.status = s.rounds.length === 13 ? 'complete' : 'active'; save(); renderGame();
+      });
+      load(); library();
+    })();
+  </script>
+</body>
+</html>
