@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🔤 Scrabble — Marcador</title>
+<title>Scrabble — Marcador</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -156,28 +156,38 @@
     .session-actions .btn { width:100%; }
   }
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <div class="app">
   <div class="header">
     <a class="header-back" href="index.html">← Volver al Inicio</a>
-    <h1>🔤 Scrabble</h1>
+    <h1>Scrabble</h1>
     <p>El jugador con más puntos al final, ¡gana!</p>
   </div>
 
   <div class="card session-card">
-    <div class="card-title">💾 Sesión</div>
+    <div class="card-title">Partidas</div>
     <div class="session-actions">
-      <button class="btn btn-ghost" onclick="saveForLater()">💾 Continuar Después</button>
-      <button class="btn btn-danger" onclick="restartGame()">🗑 Reiniciar Juego</button>
+      <button class="btn btn-ghost" onclick="saveForLater()">Guardar partida</button>
+      <button class="btn btn-ghost" onclick="restartGame()">Nueva partida</button>
+      <button class="btn btn-danger" onclick="deleteAllSessions()">Limpiar todas</button>
     </div>
-    <p class="session-note">La partida se guarda en este dispositivo para retomarla más tarde, incluso si cierras la página.</p>
+    <p class="session-note" id="activeSessionLabel">Escribe un nombre para crear una partida. Las partidas se guardan en este dispositivo.</p>
+    <div id="sessionsList" class="sessions-list" aria-live="polite"></div>
   </div>
 
   <!-- PHASE 1: Setup -->
   <div class="phase active" id="phaseSetup">
-    <div class="card">
-      <div class="card-title">👥 Jugadores</div>
+    <div class="card" id="nameCard">
+      <div class="card-title">Nombre de la partida</div>
+      <div class="input-row">
+        <input type="text" id="sessionNameInput" placeholder="Nombre de la partida..." maxlength="60" autocomplete="off" aria-label="Nombre de la partida">
+        <button class="btn btn-primary" onclick="createNamedGame()">Crear partida</button>
+      </div>
+    </div>
+    <div class="card" id="participantsCard">
+      <div class="card-title">Jugadores</div>
       <div class="player-list" id="playerList">
         <p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>
       </div>
@@ -186,7 +196,7 @@
         <button class="btn btn-primary" onclick="addPlayer()">+ Agregar</button>
       </div>
     </div>
-    <button class="btn btn-success btn-full" id="startBtn" onclick="startGame()" disabled>▶ Comenzar Juego</button>
+    <button class="btn btn-success btn-full" id="startBtn" onclick="startGame()" disabled>Comenzar Juego</button>
   </div>
 
   <!-- PHASE 2: Game -->
@@ -201,13 +211,13 @@
       </div>
       <div class="score-grid" id="scoreGrid"></div>
       <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
-        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitRound()">✓ Confirmar Ronda</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitRound()">Confirmar Ronda</button>
       </div>
     </div>
 
     <!-- Live scoreboard -->
     <div class="card">
-      <div class="card-title">📊 Marcador Acumulado</div>
+      <div class="card-title">Marcador Acumulado</div>
       <div style="overflow-x:auto;">
         <table class="score-table" id="scoreTable">
           <thead><tr id="tableHead"></tr></thead>
@@ -216,24 +226,24 @@
       </div>
     </div>
 
-    <button class="btn btn-danger btn-full" onclick="confirmEndGame()">🏁 Finalizar Juego</button>
+    <button class="btn btn-danger btn-full" onclick="confirmEndGame()">Finalizar Juego</button>
   </div>
 
   <!-- PHASE 3: Results -->
   <div class="phase" id="phaseResults">
     <div class="card">
-      <div class="card-title">🏆 Resultados Finales</div>
+      <div class="card-title">Resultados Finales</div>
       <div class="podium" id="podium"></div>
       <div class="stats-row" id="statsRow"></div>
     </div>
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
-      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">📋 Ver Historial</button>
-      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">🎮 Nueva Partida</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">Ver Historial</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">Nueva partida</button>
     </div>
 
     <!-- History card (hidden initially) -->
     <div class="card" id="historyCard" style="display:none;margin-top:1.5rem;">
-      <div class="card-title">📋 Historial de Rondas</div>
+      <div class="card-title">Historial de Rondas</div>
       <div style="overflow-x:auto;"><table class="score-table" id="historyTable"></table></div>
     </div>
   </div>
@@ -261,11 +271,16 @@ let roundHistory = [];
 let currentRound = 1;
 let gameStarted = false;
 const STORAGE_KEY = 'game_points_scrabble_v1';
+const SESSIONS_KEY = 'game_points_scrabble_sessions_v2';
+let sessions = [];
+let activeSessionId = null;
+let storageReady = true;
 
 const playerNameInput = document.getElementById('playerNameInput');
 playerNameInput.addEventListener('keydown', e => { if(e.key==='Enter') addPlayer(); });
 
 function addPlayer() {
+  if (!activeSessionId) return showToast('Primero crea una partida con nombre');
   const name = playerNameInput.value.trim();
   if (!name) return showToast('Ingresa un nombre');
   if (players.includes(name)) return showToast('Ese nombre ya existe');
@@ -289,12 +304,13 @@ function renderPlayerList() {
   if (!players.length) { list.innerHTML = '<p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>'; return; }
   list.innerHTML = players.map((p,i) => `
     <div class="player-chip">
-      <span>🎮 ${sanitize(p)}</span>
+      <span>${sanitize(p)}</span>
       <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
     </div>`).join('');
 }
 
 function startGame() {
+  if (!activeSessionId) return showToast('Primero crea una partida con nombre');
   if (players.length < 2) return;
   roundHistory = [];
   currentRound = 1;
@@ -321,7 +337,7 @@ function renderScoreInputs() {
     <div class="score-field" id="sf_${i}">
       <label style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
         <span>${sanitize(p)}</span>
-        <button type="button" class="btn-skip-turn" onclick="skipPlayerTurn(${i})">⏭ Saltar</button>
+        <button type="button" class="btn-skip-turn" onclick="skipPlayerTurn(${i})">Saltar</button>
       </label>
       <input type="number" id="score_${p.replace(/\s/g,'_')}" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*">
     </div>`).join('');
@@ -340,12 +356,12 @@ function skipPlayerTurn(playerIdx) {
     field.classList.remove('is-skipped');
     input.value = '';
     input.disabled = false;
-    if (btn) { btn.textContent = '⏭ Saltar'; btn.classList.remove('active'); }
+    if (btn) { btn.textContent = 'Saltar'; btn.classList.remove('active'); }
   } else {
     field.classList.add('is-skipped');
     input.value = '0';
     input.disabled = true;
-    if (btn) { btn.textContent = '↩ Deshacer'; btn.classList.add('active'); }
+    if (btn) { btn.textContent = 'Deshacer'; btn.classList.add('active'); }
   }
 }
 
@@ -365,7 +381,7 @@ function submitRound() {
   renderScoreTable();
   renderScoreInputs();
   persistGameState();
-  showToast(`✓ Ronda ${currentRound-1} registrada`);
+  showToast(`Ronda ${currentRound-1} registrada`);
 }
 
 function getTotals() {
@@ -380,7 +396,7 @@ function renderScoreTable() {
   const cols = roundHistory.length;
   head.innerHTML = '<th>Jugador</th>' +
     Array.from({length:cols},(_,i)=>
-      `<th>R${i+1}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar ronda ${i+1}">✏</button></th>`
+      `<th>R${i+1}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar ronda ${i+1}">Editar</button></th>`
     ).join('');
 
   const totals = getTotals();
@@ -392,7 +408,7 @@ function renderScoreTable() {
     const isLeader = totals[p] === maxTotal;
     const cells = roundHistory.map(r => `<td>${r.scores[p]??'-'}</td>`).join('');
     return `<tr class="${isLeader?'leader-row':''}">
-      <td style="font-weight:700">${isLeader?'👑 ':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
+      <td style="font-weight:700">${isLeader?'':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
       ${cells}
     </tr>`;
   }).join('');
@@ -401,9 +417,9 @@ function renderScoreTable() {
 function confirmEndGame() {
   if (roundHistory.length === 0) return showToast('Juega al menos una ronda antes de finalizar');
   showModal(
-    '🏁 Finalizar Juego',
+    'Finalizar Juego',
     '¿Estás seguro que quieres finalizar y ver los resultados finales?',
-    '🏁 Finalizar', 'btn-danger',
+    'Finalizar', 'btn-danger',
     () => endGame()
   );
 }
@@ -412,14 +428,13 @@ function endGame(shouldScroll = true) {
   const totals = getTotals();
   // Sort: higher is better
   const sorted = [...players].sort((a,b) => totals[b] - totals[a]);
-  const medals = ['🥇','🥈','🥉'];
   const podium = document.getElementById('podium');
   podium.innerHTML = sorted.map((p,i) => `
     <div class="podium-item place-${Math.min(i+1,4)}" style="animation:fadeIn ${0.1+i*0.15}s ease both">
       <div class="place-num">${i+1}°</div>
       <div class="place-name">${sanitize(p)}</div>
       <div class="place-score">${totals[p]} pts</div>
-      <div class="place-medal">${medals[i]||''}</div>
+
     </div>`).join('');
 
   const stats = document.getElementById('statsRow');
@@ -453,19 +468,22 @@ function buildHistoryTable() {
     </tbody>`;
 }
 
+function resetToNewGame() {
+  activeSessionId = null;
+  players = []; roundHistory = []; currentRound = 1; gameStarted = false;
+  playerNameInput.value = '';
+  document.getElementById('sessionNameInput').value = '';
+  renderPlayerList();
+  syncStartButton();
+  showPhase('phaseSetup');
+  renderSessions();
+}
+
 function restartGame() {
-  showModal(
-    '🗑 Reiniciar Juego',
-    '¿Comenzar una nueva partida? Se perderán todos los datos actuales.',
-    '🗑 Reiniciar', 'btn-danger',
-    () => {
-      players = []; roundHistory = []; currentRound = 1; gameStarted = false;
-      renderPlayerList();
-      syncStartButton();
-      clearSavedGame();
-      showPhase('phaseSetup');
-    }
-  );
+  showModal('Nueva partida', 'La partida actual quedará guardada. Podrás retomarla desde la lista.', 'Nueva partida', 'btn-primary', () => {
+    if (activeSessionId && !persistGameState({ includeDraft: true })) return showToast('No se pudo guardar la partida actual');
+    resetToNewGame();
+  });
 }
 
 function showPhase(id, shouldScroll = true) {
@@ -481,7 +499,7 @@ function showToast(msg) {
 }
 
 function syncStartButton() {
-  document.getElementById('startBtn').disabled = players.length < 2;
+  document.getElementById('startBtn').disabled = !activeSessionId || players.length < 2;
 }
 
 function getActivePhaseId() {
@@ -506,81 +524,170 @@ function applyDraftScores(draftScores) {
   }
 }
 
-function persistGameState({ includeDraft = false } = {}) {
-  if (!players.length && !roundHistory.length) {
-    clearSavedGame();
-    return true;
-  }
-
-  const state = {
-    players,
-    roundHistory,
-    currentRound,
-    gameStarted,
-    phase: getActivePhaseId(),
-    draftScores: includeDraft ? captureDraftScores() : null,
-  };
-
+function writeSessions() {
+  if (!storageReady) return false;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify({ version: 2, activeId: activeSessionId, games: sessions }));
     return true;
   } catch (error) {
-    console.error('No se pudo guardar la partida de Scrabble', error);
+    console.error('No se pudieron guardar las partidas de Scrabble', error);
+    showToast('No se pudo guardar. Revisa el espacio disponible en este dispositivo.');
     return false;
   }
 }
 
-function clearSavedGame() {
-  localStorage.removeItem(STORAGE_KEY);
+function persistGameState({ includeDraft = false } = {}) {
+  const session = sessions.find(item => item.id === activeSessionId);
+  if (!session || !storageReady) return false;
+  const previous = session.state;
+  session.state = {
+    players, roundHistory, currentRound, gameStarted,
+    phase: getActivePhaseId(),
+    draftScores: includeDraft ? captureDraftScores() : null,
+  };
+  if (!writeSessions()) { session.state = previous; return false; }
+  renderSessions();
+  return true;
 }
 
 function saveForLater() {
-  if (!players.length) return showToast('No hay partida para guardar');
+  if (!activeSessionId) return showToast('Primero crea una partida con nombre');
   if (persistGameState({ includeDraft: true })) showToast('Partida guardada en este dispositivo');
-  else showToast('No se pudo guardar la partida');
 }
 
-function restoreSavedGame() {
+function renderSessions() {
+  const current = sessions.find(item => item.id === activeSessionId);
+  document.getElementById('activeSessionLabel').textContent = current
+    ? `Partida actual: ${current.name}. Se guarda en este dispositivo.`
+    : 'Escribe un nombre para crear una partida. Las partidas se guardan en este dispositivo.';
+  document.getElementById('nameCard').style.display = current ? 'none' : '';
+  document.getElementById('participantsCard').style.display = current ? '' : 'none';
+  document.getElementById('startBtn').style.display = current ? '' : 'none';
+  document.getElementById('sessionsList').innerHTML = sessions.length ? sessions.map(item => {
+    const date = item.startedAt ? new Date(item.startedAt) : null;
+    const dateLabel = !date || Number.isNaN(date.getTime()) ? 'Fecha no disponible' : date.toLocaleDateString('es-CL', { day:'numeric', month:'long', year:'numeric' });
+    const names = Array.isArray(item.state?.players) ? item.state.players.join(', ') : '';
+    const finished = item.state?.phase === 'phaseResults';
+    return `<div class="session-entry ${item.id === activeSessionId ? 'is-active' : ''}">
+      <div class="session-entry-info"><strong>${sanitize(item.name)}</strong><span>${sanitize(dateLabel)} · ${sanitize(names || 'Sin participantes')} · ${finished ? 'Finalizada' : 'En curso'}</span></div>
+      <div class="session-entry-actions"><button class="btn btn-ghost" onclick="openSession('${item.id}')">${item.id === activeSessionId ? 'Ver' : 'Retomar'}</button><button class="btn btn-danger" aria-label="Borrar partida ${sanitize(item.name)}" title="Borrar partida" onclick="deleteSession('${item.id}')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v7m4-7v7M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>
+    </div>`;
+  }).join('') : '<p class="session-note">Aún no hay partidas guardadas.</p>';
+}
+
+function createNamedGame() {
+  const input = document.getElementById('sessionNameInput');
+  const name = input.value.trim();
+  if (!name) return showToast('Ingresa el nombre de la partida');
+  if (!storageReady) return showToast('No se puede acceder a las partidas guardadas');
+  if (activeSessionId && !persistGameState({ includeDraft: true })) return;
+  const previousId = activeSessionId;
+  const item = { id: (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`), name, startedAt: new Date().toISOString(), state: { players: [], roundHistory: [], phase: 'phaseSetup' } };
+  sessions.push(item);
+  activeSessionId = item.id;
+  if (!writeSessions()) { sessions.pop(); activeSessionId = previousId; return; }
+  players = []; roundHistory = []; currentRound = 1; gameStarted = false;
+  playerNameInput.value = '';
+  input.value = '';
   renderPlayerList();
   syncStartButton();
+  showPhase('phaseSetup');
+  renderSessions();
+  playerNameInput.focus();
+}
 
-  let savedState;
-  try {
-    savedState = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-  } catch (error) {
-    console.error('No se pudo leer la partida guardada de Scrabble', error);
-    clearSavedGame();
-    return;
-  }
+function openSession(id) {
+  if (!sessions.some(item => item.id === id)) return;
+  if (activeSessionId === id) return;
+  if (activeSessionId && !persistGameState({ includeDraft: true })) return;
+  const previousId = activeSessionId;
+  activeSessionId = id;
+  if (!writeSessions()) { activeSessionId = previousId; return; }
+  applySavedState(sessions.find(item => item.id === id).state);
+  renderSessions();
+}
 
+function deleteSession(id) {
+  const item = sessions.find(entry => entry.id === id);
+  if (!item) return;
+  showModal('Borrar partida', `¿Borrar la partida «${sanitize(item.name)}»? Esta acción no se puede deshacer.`, 'Borrar', 'btn-danger', () => {
+    const previous = sessions;
+    const previousId = activeSessionId;
+    sessions = sessions.filter(entry => entry.id !== id);
+    if (activeSessionId === id) activeSessionId = null;
+    if (!writeSessions()) { sessions = previous; activeSessionId = previousId; return; }
+    if (previousId === id) resetToNewGame();
+    renderSessions();
+  });
+}
+
+function deleteAllSessions() {
+  if (!sessions.length) return showToast('No hay partidas para borrar');
+  showModal('Limpiar todas las partidas', '¿Borrar todas las partidas de este juego? Esta acción no se puede deshacer.', 'Borrar todas', 'btn-danger', () => {
+    const previous = sessions;
+    const previousId = activeSessionId;
+    sessions = [];
+    activeSessionId = null;
+    if (!writeSessions()) { sessions = previous; activeSessionId = previousId; return; }
+    resetToNewGame();
+  });
+}
+
+function applySavedState(savedState) {
   if (!savedState || !Array.isArray(savedState.players)) return;
-
   players = savedState.players;
   roundHistory = Array.isArray(savedState.roundHistory) ? savedState.roundHistory : [];
   currentRound = Number.isInteger(savedState.currentRound) && savedState.currentRound > 0 ? savedState.currentRound : 1;
   gameStarted = Boolean(savedState.gameStarted);
-
   renderPlayerList();
   syncStartButton();
-
   if (savedState.phase === 'phaseResults' && roundHistory.length) {
     endGame(false);
-    showToast('Partida recuperada');
     return;
   }
-
   if (savedState.phase === 'phaseGame' && players.length >= 2) {
     buildTableHead();
     renderScoreInputs();
     renderScoreTable();
     showPhase('phaseGame', false);
     applyDraftScores(savedState.draftScores);
-    showToast('Partida recuperada');
     return;
   }
-
   showPhase('phaseSetup', false);
-  if (players.length) showToast('Partida recuperada');
+}
+
+function restoreSavedGame() {
+  renderPlayerList();
+  syncStartButton();
+  let collection;
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY);
+    if (raw !== null) {
+      collection = JSON.parse(raw);
+      if (collection?.version !== 2 || !Array.isArray(collection.games)) throw new Error('Formato de partidas no reconocido');
+      if (!collection.games.every(item => item && typeof item.id === 'string' && /^[a-zA-Z0-9-]+$/.test(item.id) && typeof item.name === 'string' && item.state && Array.isArray(item.state.players))) throw new Error('Partida guardada no reconocida');
+      sessions = collection.games;
+      activeSessionId = sessions.some(item => item.id === collection.activeId) ? collection.activeId : null;
+    } else {
+      const oldRaw = localStorage.getItem(STORAGE_KEY);
+      if (oldRaw !== null) {
+        const old = JSON.parse(oldRaw);
+        if (old && Array.isArray(old.players)) {
+          const item = { id: (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`), name: 'Partida anterior', startedAt: null, state: old };
+          sessions = [item];
+          activeSessionId = item.id;
+          if (writeSessions()) localStorage.removeItem(STORAGE_KEY);
+          else { storageReady = false; sessions = []; activeSessionId = null; }
+        } else throw new Error('Partida anterior no reconocida');
+      }
+    }
+  } catch (error) {
+    console.error('No se pudieron leer las partidas de Scrabble', error);
+    storageReady = false;
+    showToast('No se pudieron leer las partidas guardadas. No se sobrescribirán.');
+  }
+  if (activeSessionId) applySavedState(sessions.find(item => item.id === activeSessionId).state);
+  renderSessions();
 }
 
 restoreSavedGame();
@@ -622,7 +729,7 @@ function editRound(roundIdx) {
       </div>`;
     }).join('')}`;
   showModal(
-    `Editar Ronda ${roundIdx+1}`, formHtml, '💾 Guardar', 'btn-success',
+    `Editar Ronda ${roundIdx+1}`, formHtml, 'Guardar', 'btn-success',
     () => {
       players.forEach(p => {
         const el = document.getElementById(`edit_${p.replace(/\W/g,'_')}`);
@@ -630,7 +737,7 @@ function editRound(roundIdx) {
       });
       renderScoreTable();
       persistGameState();
-      showToast(`✓ Ronda ${roundIdx+1} actualizada`);
+      showToast(`Ronda ${roundIdx+1} actualizada`);
     }
   );
 }

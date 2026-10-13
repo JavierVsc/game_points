@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧹 Escoba — Marcador</title>
+<title>Escoba — Marcador</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -140,28 +140,38 @@
     .session-actions .btn { width:100%; }
   }
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <div class="app">
   <div class="header">
     <a class="header-back" href="index.html">← Volver al Inicio</a>
-    <h1>🧹 Escoba</h1>
+    <h1>Escoba</h1>
     <p>Naipe español — El que más puntos acumule, ¡gana!</p>
   </div>
 
   <div class="card session-card">
-    <div class="card-title">💾 Sesión</div>
+    <div class="card-title">Partidas</div>
     <div class="session-actions">
-      <button class="btn btn-ghost" onclick="saveForLater()">💾 Continuar Después</button>
-      <button class="btn btn-danger" onclick="restartGame()">🗑 Reiniciar Juego</button>
+      <button class="btn btn-ghost" onclick="saveForLater()">Guardar partida</button>
+      <button class="btn btn-ghost" onclick="restartGame()">Nueva partida</button>
+      <button class="btn btn-danger" onclick="deleteAllSessions()">Limpiar todas</button>
     </div>
-    <p class="session-note">La partida se guarda en este dispositivo para retomarla más tarde, incluso si cierras la página.</p>
+    <p class="session-note" id="activeSessionLabel">Escribe un nombre para crear una partida. Las partidas se guardan en este dispositivo.</p>
+    <div id="sessionsList" class="sessions-list" aria-live="polite"></div>
   </div>
 
   <!-- PHASE 1: Setup -->
   <div class="phase active" id="phaseSetup">
-    <div class="card">
-      <div class="card-title">👥 Jugadores</div>
+    <div class="card" id="nameCard">
+      <div class="card-title">Nombre de la partida</div>
+      <div class="input-row">
+        <input type="text" id="sessionNameInput" placeholder="Nombre de la partida..." maxlength="60" autocomplete="off" aria-label="Nombre de la partida">
+        <button class="btn btn-primary" onclick="createNamedGame()">Crear partida</button>
+      </div>
+    </div>
+    <div class="card" id="participantsCard">
+      <div class="card-title">Jugadores</div>
       <div class="player-list" id="playerList">
         <p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>
       </div>
@@ -173,19 +183,19 @@
 
     <!-- Scoring guide -->
     <div class="card">
-      <div class="card-title">📖 Cómo Se Puntúa</div>
+      <div class="card-title">Cómo Se Puntúa</div>
       <div class="info-grid">
-        <div class="info-item"><div class="info-icon">🧹</div><div class="info-text"><strong>Por cada escoba</strong>1 punto</div></div>
-        <div class="info-item"><div class="info-icon">💰</div><div class="info-text"><strong>Todos los oros</strong>2 puntos</div></div>
-        <div class="info-item"><div class="info-icon">🪙</div><div class="info-text"><strong>Mayoría de oros</strong>1 punto</div></div>
-        <div class="info-item"><div class="info-icon">⭐</div><div class="info-text"><strong>Guindis (7 de oros)</strong>1 punto</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Por cada escoba</strong>1 punto</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Todos los oros</strong>2 puntos</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Mayoría de oros</strong>1 punto</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Guindis (7 de oros)</strong>1 punto</div></div>
         <div class="info-item"><div class="info-icon">7️⃣</div><div class="info-text"><strong>Los 4 sietes</strong>3 puntos</div></div>
-        <div class="info-item"><div class="info-icon">🏅</div><div class="info-text"><strong>Mayoría de sietes</strong>1 punto</div></div>
-        <div class="info-item"><div class="info-icon">🃏</div><div class="info-text"><strong>Mayoría de cartas</strong>1 punto</div></div>
-        <div class="info-item"><div class="info-icon">📉</div><div class="info-text"><strong>Rival con menos de 10 cartas</strong>2 puntos</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Mayoría de sietes</strong>1 punto</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Mayoría de cartas</strong>1 punto</div></div>
+        <div class="info-item"><div class="info-icon"></div><div class="info-text"><strong>Rival con menos de 10 cartas</strong>2 puntos</div></div>
       </div>
     </div>
-    <button class="btn btn-success btn-full" id="startBtn" onclick="startGame()" disabled>▶ Comenzar Juego</button>
+    <button class="btn btn-success btn-full" id="startBtn" onclick="startGame()" disabled>Comenzar Juego</button>
   </div>
 
   <!-- PHASE 2: Game -->
@@ -199,12 +209,12 @@
       </div>
       <div id="breakdownContainer"></div>
       <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
-        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitRound()">✓ Confirmar Mano</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitRound()">Confirmar Mano</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">📊 Marcador Acumulado</div>
+      <div class="card-title">Marcador Acumulado</div>
       <div style="overflow-x:auto;">
         <table class="score-table" id="scoreTable">
           <thead><tr id="tableHead"></tr></thead>
@@ -213,22 +223,22 @@
       </div>
     </div>
 
-    <button class="btn btn-danger btn-full" onclick="confirmEndGame()">🏁 Finalizar Juego</button>
+    <button class="btn btn-danger btn-full" onclick="confirmEndGame()">Finalizar Juego</button>
   </div>
 
   <!-- PHASE 3: Results -->
   <div class="phase" id="phaseResults">
     <div class="card">
-      <div class="card-title">🏆 Resultados Finales</div>
+      <div class="card-title">Resultados Finales</div>
       <div class="podium" id="podium"></div>
       <div class="stats-row" id="statsRow"></div>
     </div>
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
-      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">📋 Ver Historial</button>
-      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">🎮 Nueva Partida</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="viewHistory()">Ver Historial</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="restartGame()">Nueva partida</button>
     </div>
     <div class="card" id="historyCard" style="display:none;margin-top:1.5rem;">
-      <div class="card-title">📋 Historial de Manos</div>
+      <div class="card-title">Historial de Manos</div>
       <div style="overflow-x:auto;"><table class="score-table" id="historyTable"></table></div>
     </div>
   </div>
@@ -255,11 +265,16 @@ let players = [];
 let roundHistory = []; // {round, scores:{name:total}, breakdown:{name:{escobas,allOros,majorityOros,guindis,fourSevens,majoritySevens,majorityCards,rivalUnder10}}}
 let currentRound = 1;
 const STORAGE_KEY = 'game_points_escoba_v1';
+const SESSIONS_KEY = 'game_points_escoba_sessions_v2';
+let sessions = [];
+let activeSessionId = null;
+let storageReady = true;
 
 const playerNameInput = document.getElementById('playerNameInput');
 playerNameInput.addEventListener('keydown', e => { if(e.key==='Enter') addPlayer(); });
 
 function addPlayer() {
+  if (!activeSessionId) return showToast('Primero crea una partida con nombre');
   const name = playerNameInput.value.trim();
   if (!name) return showToast('Ingresa un nombre');
   if (players.includes(name)) return showToast('Ese nombre ya existe');
@@ -283,12 +298,13 @@ function renderPlayerList() {
   if (!players.length) { list.innerHTML = '<p class="empty-hint">Aún no hay jugadores. ¡Agrega al menos 2!</p>'; return; }
   list.innerHTML = players.map((p,i) => `
     <div class="player-chip">
-      <span>🎮 ${sanitize(p)}</span>
+      <span>${sanitize(p)}</span>
       <button class="remove-btn" onclick="removePlayer(${i})">✕</button>
     </div>`).join('');
 }
 
 function startGame() {
+  if (!activeSessionId) return showToast('Primero crea una partida con nombre');
   if (players.length < 2) return;
   roundHistory = [];
   currentRound = 1;
@@ -308,7 +324,7 @@ function updateTableHead() {
   document.getElementById('tableHead').innerHTML =
     '<th>Jugador</th>' +
     Array.from({length:n},(_,i)=>
-      `<th>M${i+1}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar mano ${i+1}">✏</button></th>`
+      `<th>M${i+1}<button class="edit-round-btn" onclick="editRound(${i})" title="Editar mano ${i+1}">Editar</button></th>`
     ).join('');
 }
 
@@ -319,56 +335,56 @@ function renderBreakdown() {
     const safe = p.replace(/\s/g,'_');
     return `
     <div class="score-breakdown">
-      <div class="breakdown-player">🎮 ${sanitize(p)}</div>
+      <div class="breakdown-player">${sanitize(p)}</div>
       <div class="breakdown-grid">
         <div class="mini-field">
-          <label>🧹 Escobas</label>
+          <label>Escobas</label>
           <input type="number" id="escobas_${safe}" placeholder="0" min="0" inputmode="numeric" pattern="[0-9]*" oninput="updateSubtotal('${safe}')">
         </div>
         <div class="mini-field">
-          <label>💰 Todos los Oros</label>
+          <label>Todos los Oros</label>
           <select id="allOros_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="2">Sí (+2 pts)</option>
           </select>
         </div>
         <div class="mini-field">
-          <label>🪙 Mayoría de Oros</label>
+          <label>Mayoría de Oros</label>
           <select id="majorityOros_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="1">Sí (+1 pto)</option>
           </select>
         </div>
         <div class="mini-field">
-          <label>⭐ Guindis</label>
+          <label>Guindis</label>
           <select id="guindis_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="1">Sí (+1 pto)</option>
           </select>
         </div>
         <div class="mini-field">
-          <label>7️⃣ Los 4 Sietes</label>
+          <label>Los 4 Sietes</label>
           <select id="fourSevens_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="3">Sí (+3 pts)</option>
           </select>
         </div>
         <div class="mini-field">
-          <label>🏅 Mayoría de Sietes</label>
+          <label>Mayoría de Sietes</label>
           <select id="majoritySevens_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="1">Sí (+1 pto)</option>
           </select>
         </div>
         <div class="mini-field">
-          <label>🃏 Mayoría de Cartas</label>
+          <label>Mayoría de Cartas</label>
           <select id="majorityCards_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="1">Sí (+1 pto)</option>
           </select>
         </div>
         <div class="mini-field">
-          <label>📉 Rival &lt; 10 Cartas</label>
+          <label>Rival &lt; 10 Cartas</label>
           <select id="rivalUnder10_${safe}" onchange="updateSubtotal('${safe}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;color:var(--text);font-family:'Nunito',sans-serif;font-size:0.95rem;font-weight:700;outline:none;">
             <option value="0">No</option>
             <option value="2">Sí (+2 pts)</option>
@@ -422,7 +438,7 @@ function submitRound() {
   renderScoreTable();
   renderBreakdown();
   persistGameState();
-  showToast(`✓ Mano ${currentRound-1} registrada`);
+  showToast(`Mano ${currentRound-1} registrada`);
 }
 
 function getTotals() {
@@ -443,7 +459,7 @@ function renderScoreTable() {
     const isLeader = totals[p] === maxTotal && roundHistory.length > 0;
     const cells = roundHistory.map(r => `<td>${r.scores[p]??0}</td>`).join('');
     return `<tr class="${isLeader?'leader-row':''}">
-      <td style="font-weight:700">${isLeader?'👑 ':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
+      <td style="font-weight:700">${isLeader?'':''}${sanitize(p)}<span class="inline-total">${totals[p]}</span></td>
       ${cells}
     </tr>`;
   }).join('');
@@ -452,9 +468,9 @@ function renderScoreTable() {
 function confirmEndGame() {
   if (roundHistory.length === 0) return showToast('Juega al menos una mano antes de finalizar');
   showModal(
-    '🏁 Finalizar Juego',
+    'Finalizar Juego',
     '¿Estás seguro que quieres finalizar y ver los resultados finales?',
-    '🏁 Finalizar', 'btn-danger',
+    'Finalizar', 'btn-danger',
     () => endGame()
   );
 }
@@ -462,13 +478,12 @@ function confirmEndGame() {
 function endGame(shouldScroll = true) {
   const totals = getTotals();
   const sorted = [...players].sort((a,b) => totals[b]-totals[a]);
-  const medals = ['🥇','🥈','🥉'];
   document.getElementById('podium').innerHTML = sorted.map((p,i) => `
     <div class="podium-item place-${Math.min(i+1,4)}" style="animation:fadeIn ${0.1+i*0.15}s ease both">
       <div class="place-num">${i+1}°</div>
       <div class="place-name">${sanitize(p)}</div>
       <div class="place-score">${totals[p]} pts</div>
-      <div class="place-medal">${medals[i]||''}</div>
+
     </div>`).join('');
 
   // Count total escobas
@@ -504,19 +519,22 @@ function buildHistoryTable() {
     </tbody>`;
 }
 
+function resetToNewGame() {
+  activeSessionId = null;
+  players = []; roundHistory = []; currentRound = 1;
+  playerNameInput.value = '';
+  document.getElementById('sessionNameInput').value = '';
+  renderPlayerList();
+  syncStartButton();
+  showPhase('phaseSetup');
+  renderSessions();
+}
+
 function restartGame() {
-  showModal(
-    '🗑 Reiniciar Juego',
-    '¿Comenzar una nueva partida? Se perderán todos los datos actuales.',
-    '🗑 Reiniciar', 'btn-danger',
-    () => {
-      players = []; roundHistory = []; currentRound = 1;
-      renderPlayerList();
-      syncStartButton();
-      clearSavedGame();
-      showPhase('phaseSetup');
-    }
-  );
+  showModal('Nueva partida', 'La partida actual quedará guardada. Podrás retomarla desde la lista.', 'Nueva partida', 'btn-primary', () => {
+    if (activeSessionId && !persistGameState({ includeDraft: true })) return showToast('No se pudo guardar la partida actual');
+    resetToNewGame();
+  });
 }
 
 function showPhase(id, shouldScroll = true) {
@@ -532,7 +550,7 @@ function showToast(msg) {
 }
 
 function syncStartButton() {
-  document.getElementById('startBtn').disabled = players.length < 2;
+  document.getElementById('startBtn').disabled = !activeSessionId || players.length < 2;
 }
 
 function getActivePhaseId() {
@@ -573,79 +591,169 @@ function applyDraftBreakdown(draftBreakdown) {
   }
 }
 
-function persistGameState({ includeDraft = false } = {}) {
-  if (!players.length && !roundHistory.length) {
-    clearSavedGame();
-    return true;
-  }
-
-  const state = {
-    players,
-    roundHistory,
-    currentRound,
-    phase: getActivePhaseId(),
-    draftBreakdown: includeDraft ? captureDraftBreakdown() : null,
-  };
-
+function writeSessions() {
+  if (!storageReady) return false;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify({ version: 2, activeId: activeSessionId, games: sessions }));
     return true;
   } catch (error) {
-    console.error('No se pudo guardar la partida de Escoba', error);
+    console.error('No se pudieron guardar las partidas de Escoba', error);
+    showToast('No se pudo guardar. Revisa el espacio disponible en este dispositivo.');
     return false;
   }
 }
 
-function clearSavedGame() {
-  localStorage.removeItem(STORAGE_KEY);
+function persistGameState({ includeDraft = false } = {}) {
+  const session = sessions.find(item => item.id === activeSessionId);
+  if (!session || !storageReady) return false;
+  const previous = session.state;
+  session.state = {
+    players, roundHistory, currentRound,
+    phase: getActivePhaseId(),
+    draftBreakdown: includeDraft ? captureDraftBreakdown() : null,
+  };
+  if (!writeSessions()) { session.state = previous; return false; }
+  renderSessions();
+  return true;
 }
 
 function saveForLater() {
-  if (!players.length) return showToast('No hay partida para guardar');
+  if (!activeSessionId) return showToast('Primero crea una partida con nombre');
   if (persistGameState({ includeDraft: true })) showToast('Partida guardada en este dispositivo');
-  else showToast('No se pudo guardar la partida');
 }
 
-function restoreSavedGame() {
+function renderSessions() {
+  const current = sessions.find(item => item.id === activeSessionId);
+  document.getElementById('activeSessionLabel').textContent = current
+    ? `Partida actual: ${current.name}. Se guarda en este dispositivo.`
+    : 'Escribe un nombre para crear una partida. Las partidas se guardan en este dispositivo.';
+  document.getElementById('nameCard').style.display = current ? 'none' : '';
+  document.getElementById('participantsCard').style.display = current ? '' : 'none';
+  document.getElementById('startBtn').style.display = current ? '' : 'none';
+  document.getElementById('sessionsList').innerHTML = sessions.length ? sessions.map(item => {
+    const date = item.startedAt ? new Date(item.startedAt) : null;
+    const dateLabel = !date || Number.isNaN(date.getTime()) ? 'Fecha no disponible' : date.toLocaleDateString('es-CL', { day:'numeric', month:'long', year:'numeric' });
+    const names = Array.isArray(item.state?.players) ? item.state.players.join(', ') : '';
+    const finished = item.state?.phase === 'phaseResults';
+    return `<div class="session-entry ${item.id === activeSessionId ? 'is-active' : ''}">
+      <div class="session-entry-info"><strong>${sanitize(item.name)}</strong><span>${sanitize(dateLabel)} · ${sanitize(names || 'Sin participantes')} · ${finished ? 'Finalizada' : 'En curso'}</span></div>
+      <div class="session-entry-actions"><button class="btn btn-ghost" onclick="openSession('${item.id}')">${item.id === activeSessionId ? 'Ver' : 'Retomar'}</button><button class="btn btn-danger" aria-label="Borrar partida ${sanitize(item.name)}" title="Borrar partida" onclick="deleteSession('${item.id}')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v7m4-7v7M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>
+    </div>`;
+  }).join('') : '<p class="session-note">Aún no hay partidas guardadas.</p>';
+}
+
+function createNamedGame() {
+  const input = document.getElementById('sessionNameInput');
+  const name = input.value.trim();
+  if (!name) return showToast('Ingresa el nombre de la partida');
+  if (!storageReady) return showToast('No se puede acceder a las partidas guardadas');
+  if (activeSessionId && !persistGameState({ includeDraft: true })) return;
+  const previousId = activeSessionId;
+  const item = { id: (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`), name, startedAt: new Date().toISOString(), state: { players: [], roundHistory: [], phase: 'phaseSetup' } };
+  sessions.push(item);
+  activeSessionId = item.id;
+  if (!writeSessions()) { sessions.pop(); activeSessionId = previousId; return; }
+  players = []; roundHistory = []; currentRound = 1;
+  playerNameInput.value = '';
+  input.value = '';
   renderPlayerList();
   syncStartButton();
+  showPhase('phaseSetup');
+  renderSessions();
+  playerNameInput.focus();
+}
 
-  let savedState;
-  try {
-    savedState = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-  } catch (error) {
-    console.error('No se pudo leer la partida guardada de Escoba', error);
-    clearSavedGame();
-    return;
-  }
+function openSession(id) {
+  if (!sessions.some(item => item.id === id)) return;
+  if (activeSessionId === id) return;
+  if (activeSessionId && !persistGameState({ includeDraft: true })) return;
+  const previousId = activeSessionId;
+  activeSessionId = id;
+  if (!writeSessions()) { activeSessionId = previousId; return; }
+  applySavedState(sessions.find(item => item.id === id).state);
+  renderSessions();
+}
 
+function deleteSession(id) {
+  const item = sessions.find(entry => entry.id === id);
+  if (!item) return;
+  showModal('Borrar partida', `¿Borrar la partida «${sanitize(item.name)}»? Esta acción no se puede deshacer.`, 'Borrar', 'btn-danger', () => {
+    const previous = sessions;
+    const previousId = activeSessionId;
+    sessions = sessions.filter(entry => entry.id !== id);
+    if (activeSessionId === id) activeSessionId = null;
+    if (!writeSessions()) { sessions = previous; activeSessionId = previousId; return; }
+    if (previousId === id) resetToNewGame();
+    renderSessions();
+  });
+}
+
+function deleteAllSessions() {
+  if (!sessions.length) return showToast('No hay partidas para borrar');
+  showModal('Limpiar todas las partidas', '¿Borrar todas las partidas de este juego? Esta acción no se puede deshacer.', 'Borrar todas', 'btn-danger', () => {
+    const previous = sessions;
+    const previousId = activeSessionId;
+    sessions = [];
+    activeSessionId = null;
+    if (!writeSessions()) { sessions = previous; activeSessionId = previousId; return; }
+    resetToNewGame();
+  });
+}
+
+function applySavedState(savedState) {
   if (!savedState || !Array.isArray(savedState.players)) return;
-
   players = savedState.players;
   roundHistory = Array.isArray(savedState.roundHistory) ? savedState.roundHistory : [];
   currentRound = Number.isInteger(savedState.currentRound) && savedState.currentRound > 0 ? savedState.currentRound : 1;
-
   renderPlayerList();
   syncStartButton();
-
   if (savedState.phase === 'phaseResults' && roundHistory.length) {
     endGame(false);
-    showToast('Partida recuperada');
     return;
   }
-
   if (savedState.phase === 'phaseGame' && players.length >= 2) {
     buildTableHead();
     renderBreakdown();
     renderScoreTable();
     showPhase('phaseGame', false);
     applyDraftBreakdown(savedState.draftBreakdown);
-    showToast('Partida recuperada');
     return;
   }
-
   showPhase('phaseSetup', false);
-  if (players.length) showToast('Partida recuperada');
+}
+
+function restoreSavedGame() {
+  renderPlayerList();
+  syncStartButton();
+  let collection;
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY);
+    if (raw !== null) {
+      collection = JSON.parse(raw);
+      if (collection?.version !== 2 || !Array.isArray(collection.games)) throw new Error('Formato de partidas no reconocido');
+      if (!collection.games.every(item => item && typeof item.id === 'string' && /^[a-zA-Z0-9-]+$/.test(item.id) && typeof item.name === 'string' && item.state && Array.isArray(item.state.players))) throw new Error('Partida guardada no reconocida');
+      sessions = collection.games;
+      activeSessionId = sessions.some(item => item.id === collection.activeId) ? collection.activeId : null;
+    } else {
+      const oldRaw = localStorage.getItem(STORAGE_KEY);
+      if (oldRaw !== null) {
+        const old = JSON.parse(oldRaw);
+        if (old && Array.isArray(old.players)) {
+          const item = { id: (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`), name: 'Partida anterior', startedAt: null, state: old };
+          sessions = [item];
+          activeSessionId = item.id;
+          if (writeSessions()) localStorage.removeItem(STORAGE_KEY);
+          else { storageReady = false; sessions = []; activeSessionId = null; }
+        } else throw new Error('Partida anterior no reconocida');
+      }
+    }
+  } catch (error) {
+    console.error('No se pudieron leer las partidas de Escoba', error);
+    storageReady = false;
+    showToast('No se pudieron leer las partidas guardadas. No se sobrescribirán.');
+  }
+  if (activeSessionId) applySavedState(sessions.find(item => item.id === activeSessionId).state);
+  renderSessions();
 }
 
 restoreSavedGame();
@@ -685,21 +793,21 @@ function editRound(roundIdx) {
     const safe = p.replace(/\W/g,'_');
     const bd = r.breakdown[p] || {};
     return `<div style="margin-bottom:1rem;padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:12px;">
-      <div style="font-weight:900;margin-bottom:0.6rem;">🎮 ${sanitize(p)}</div>
+      <div style="font-weight:900;margin-bottom:0.6rem;">${sanitize(p)}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;">
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🧹 Escobas</div><input type="number" id="ed_escobas_${safe}" value="${bd.escobas||0}" min="0" style="${iStyle}"></div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">💰 Todos los Oros</div>${mkSel(`ed_allOros_${safe}`,bd.allOros||0,[[0,'No'],[2,'Sí (+2)']])}</div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🪙 Mayoría Oros</div>${mkSel(`ed_majOros_${safe}`,bd.majorityOros||0,[[0,'No'],[1,'Sí (+1)']])}</div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">⭐ Guindis</div>${mkSel(`ed_guindis_${safe}`,bd.guindis||0,[[0,'No'],[1,'Sí (+1)']])}</div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">7️⃣ Los 4 Sietes</div>${mkSel(`ed_4sev_${safe}`,bd.fourSevens||0,[[0,'No'],[3,'Sí (+3)']])}</div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🏅 Mayoría Sietes</div>${mkSel(`ed_majSev_${safe}`,bd.majoritySevens||0,[[0,'No'],[1,'Sí (+1)']])}</div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">🃏 Mayoría Cartas</div>${mkSel(`ed_majCards_${safe}`,bd.majorityCards||0,[[0,'No'],[1,'Sí (+1)']])}</div>
-        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">📉 Rival &lt;10</div>${mkSel(`ed_rival_${safe}`,bd.rivalUnder10||0,[[0,'No'],[2,'Sí (+2)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Escobas</div><input type="number" id="ed_escobas_${safe}" value="${bd.escobas||0}" min="0" style="${iStyle}"></div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Todos los Oros</div>${mkSel(`ed_allOros_${safe}`,bd.allOros||0,[[0,'No'],[2,'Sí (+2)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Mayoría Oros</div>${mkSel(`ed_majOros_${safe}`,bd.majorityOros||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Guindis</div>${mkSel(`ed_guindis_${safe}`,bd.guindis||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Los 4 Sietes</div>${mkSel(`ed_4sev_${safe}`,bd.fourSevens||0,[[0,'No'],[3,'Sí (+3)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Mayoría Sietes</div>${mkSel(`ed_majSev_${safe}`,bd.majoritySevens||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Mayoría Cartas</div>${mkSel(`ed_majCards_${safe}`,bd.majorityCards||0,[[0,'No'],[1,'Sí (+1)']])}</div>
+        <div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">Rival &lt;10</div>${mkSel(`ed_rival_${safe}`,bd.rivalUnder10||0,[[0,'No'],[2,'Sí (+2)']])}</div>
       </div>
     </div>`;
   }).join('');
   showModal(
-    `Editar Mano ${roundIdx+1}`, formHtml, '💾 Guardar', 'btn-success',
+    `Editar Mano ${roundIdx+1}`, formHtml, 'Guardar', 'btn-success',
     () => {
       players.forEach(p => {
         const safe = p.replace(/\W/g,'_');
@@ -718,7 +826,7 @@ function editRound(roundIdx) {
       updateTableHead();
       renderScoreTable();
       persistGameState();
-      showToast(`✓ Mano ${roundIdx+1} actualizada`);
+      showToast(`Mano ${roundIdx+1} actualizada`);
     }
   );
 }
