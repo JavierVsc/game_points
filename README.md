@@ -1,4 +1,4 @@
-# Marcador de puntos para juegos de mesa
+# Marcador de puntajes para juegos de mesa
 
 Aplicación web para registrar partidas, rondas y puntajes de cuatro juegos de mesa. Funciona directamente en el navegador, sin cuenta ni instalación de dependencias. El marcador acompaña el juego físico: los participantes ingresan los puntos de cada ronda.
 
